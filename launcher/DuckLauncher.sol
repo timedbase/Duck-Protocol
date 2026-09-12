@@ -155,33 +155,12 @@ contract DuckLauncher is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         });
         emit DexAdded(initialPositionMgr_, initialSingleton_, initialHook_);
 
+        // Native ETH is the only quote asset seeded here: it is the one that means the same thing on
+        // every chain. ERC20 quote tokens are chain-specific and are seeded by the deploy script from
+        // its own per-chain curated list -- an earlier revision hardcoded Robinhood's list here with
+        // no chain check, which silently whitelisted meaningless addresses when deployed to Ink.
         quoteTokens[address(0)] = true;
         emit QuoteTokenAdded(address(0));
-
-        _seedDefaultQuoteTokens();
-    }
-
-    // Real, verified Robinhood Chain tokens. Native ETH is already seeded above via
-    // quoteTokens[address(0)]. No default route is seeded here -- that would mean guessing pool
-    // parameters instead of reading them off a real pool; set one via setRoutes once known.
-    function _seedDefaultQuoteTokens() private {
-        address[11] memory defaults = [
-            0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168, // USDG
-            0x492641F648a4986844848E0beFE66D14817bCE34, // LINK
-            0xf3081494B87e8D5fb7960f066E931D1D0e6E3d67, // TAO
-            0x39dBED3a2bd333467115dE45665cC57F813C4571, // PONS
-            0x020bfC650A365f8BB26819deAAbF3E21291018b4, // CASHCAT
-            0x56910D4409F3a0C78C64DD8D0545FF0705389870, // INDEX
-            0x117cc2133c37B721F49dE2A7a74833232B3B4C0C, // SPY (Robinhood Token)
-            0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC, // NVDA (Robinhood Token)
-            0x322F0929c4625eD5bAd873c95208D54E1c003b2d, // TSLA (Robinhood Token)
-            0x4a0E65A3EcceC6dBe60AE065F2e7bb85Fae35eEa, // SPCX (Robinhood Token)
-            0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9  // AAPL (Robinhood Token)
-        ];
-        for (uint256 i; i < defaults.length; ++i) {
-            quoteTokens[defaults[i]] = true;
-            emit QuoteTokenAdded(defaults[i]);
-        }
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}

@@ -289,6 +289,7 @@ contract DeployDuckProtocol is Script {
         launcher.acceptOwnership();
         launcher.setVaultFactory(vaultFactoryAddr);
         launcher.setUniversalRouter(_universalRouter());
+        _seedLauncherQuoteTokens(launcher);
         console.log("DuckLauncher impl: ", launcherImpl);
         console.log("DuckLauncher proxy:", launcherAddr);
     }
@@ -371,6 +372,19 @@ contract DeployDuckProtocol is Script {
         }
         for (uint256 i; i < tokens.length; i++) {
             curve.setQuoteTokenAllowed(tokens[i], true);
+        }
+    }
+
+    // The launcher seeds only native ETH in its own initialize(); its ERC20 quote tokens come from
+    // the same per-chain curated list the curve and crowdfund use, so all three stay in lockstep.
+    function _seedLauncherQuoteTokens(DuckLauncher launcher) internal {
+        address[] memory tokens = _defaultQuoteTokens();
+        if (tokens.length == 0) {
+            console.log("No curated default quote tokens for this chain -- set them via launcher.addQuoteToken(...) once scanned.");
+            return;
+        }
+        for (uint256 i; i < tokens.length; i++) {
+            launcher.addQuoteToken(tokens[i]);
         }
     }
 
