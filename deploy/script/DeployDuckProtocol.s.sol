@@ -101,10 +101,9 @@ contract DeployDuckProtocol is Script {
     address constant RH_AMZN  = 0x12f190a9F9d7D37a250758b26824B97CE941bF54;
     address constant RH_MSFT  = 0xe93237C50D904957Cf27E7B1133b510C669c2e74;
 
-    // --- Ink (57073) -- 10 of 17 candidates cleared, scanned against Uniswap v3 and v4. LINK,
-    // XAUT0, unwrapped NVDA and SNDK had no pool at all; native USDC and USDG had only dust-level
-    // pools despite being candidate base currencies, so they fall under the same $20,000 rule and
-    // can be added back once their liquidity develops. ---
+    // --- Ink (57073) -- LINK, XAUT0, unwrapped NVDA and SNDK had no pool at all; native USDC had
+    // only dust. USDG is included because Ink's tokenized stocks trade against it on v3, and it is
+    // reached via the WETH/USDG v3 pool (fee 10000). ---
     address constant INK_BTC          = 0x73E0C0d45E048D25Fc26Fa3159b0aA04BfA4Db98;
     address constant INK_USDT0        = 0x0200C29006150606B650577BBE7B6248F58470c1;
     address constant INK_USDC_BRIDGED = 0xF1815bd50389c46847f0Bda824eC8da914045D14;
@@ -115,6 +114,7 @@ contract DeployDuckProtocol is Script {
     address constant INK_AAPL_WRAPPED = 0x943BF64D566c32A2Bcd41AC92FB63C111cC9De8f;
     address constant INK_NFLX_WRAPPED = 0x7d87fD6A379714194a797c0bBB8B40c30D250856;
     address constant INK_TSLA_WRAPPED = 0xc3FdBe3A68EE5dE461D30415a8165cf9Aefe1171;
+    address constant INK_USDG         = 0xe343167631d89B6Ffc58B88d6b7fB0228795491D;
 
 
     // Named, versioned salts -- one per deployed contract. "v1" so a future redeploy of any single
@@ -419,7 +419,7 @@ contract DeployDuckProtocol is Script {
             tokens[14] = RH_AMZN;
             tokens[15] = RH_MSFT;
         } else if (block.chainid == INK_CHAIN_ID) {
-            tokens = new address[](10);
+            tokens = new address[](11);
             tokens[0] = INK_BTC;
             tokens[1] = INK_USDT0;
             tokens[2] = INK_USDC_BRIDGED;
@@ -430,6 +430,7 @@ contract DeployDuckProtocol is Script {
             tokens[7] = INK_AAPL_WRAPPED;
             tokens[8] = INK_NFLX_WRAPPED;
             tokens[9] = INK_TSLA_WRAPPED;
+            tokens[10] = INK_USDG;
         }
         // else: tokens stays empty -- unknown chain, nothing curated yet.
     }

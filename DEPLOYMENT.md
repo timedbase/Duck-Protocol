@@ -61,7 +61,7 @@ Both satisfy the required v4 hook permission bits (`address & 0x3FFF == 0x2CC`).
 | Uniswap v4 PoolManager | `0x8366a39CC670B4001A1121B8F6A443A643e40951` | `0x360E68faCcca8cA495c1B759Fd9EEe466db9FB32` |
 | Uniswap v4 PositionManager | `0x58daec3116aae6D93017bAAea7749052E8a04fA7` | `0x1b35d13a2E2528f192637F14B05f0Dc0e7dEB566` |
 | Universal Router | `0x8876789976dEcBfCbBbe364623C63652db8C0904` | `0x112908daC86e20e7241B0927479Ea3Bf935d1fa0` |
-| Uniswap v3 Factory | *(not yet recovered)* | `0x640887A9ba3A9C53Ed27D0F7e8246A4F933f3424` |
+| Uniswap v3 Factory (the one the Universal Router is bound to) | `0x1f7d7550B1b028f7571E69A784071F0205FD2EfA` | `0x640887A9ba3A9C53Ed27D0F7e8246A4F933f3424` |
 | Permit2 (canonical) | `0x000000000022D473030F116dDEE9F6B43aC78BA3` | same |
 
 Robinhood's Universal Router is a **bespoke fork** (RouteSigner / ChainedActions), not vanilla
@@ -109,7 +109,7 @@ Deliberately **disabled** (real tokens, but below the $20,000 liquidity bar): LI
 CASHCAT `0x020bfC650A365f8BB26819deAAbF3E21291018b4`, Index
 `0x56910D4409F3a0C78C64DD8D0545FF0705389870`.
 
-### Ink (57073) — 10 tokens
+### Ink (57073) — 11 tokens
 
 | Symbol | Address |
 |---|---|
@@ -123,19 +123,37 @@ CASHCAT `0x020bfC650A365f8BB26819deAAbF3E21291018b4`, Index
 | AAPL (wrapped) | `0x943BF64D566c32A2Bcd41AC92FB63C111cC9De8f` |
 | NFLX (wrapped) | `0x7d87fD6A379714194a797c0bBB8B40c30D250856` |
 | TSLA (wrapped) | `0xc3FdBe3A68EE5dE461D30415a8165cf9Aefe1171` |
+| USDG | `0xe343167631d89B6Ffc58B88d6b7fB0228795491D` |
 
 ---
 
+## Swap routes
+
+Route data lives in `deploy/script/RouteTables.sol`; `deploy/script/SetRoutes.s.sol` writes it to
+all three launch families. Every route is fork-tested in both directions against live liquidity by
+`deploy/test/SetRoutes.fork.t.sol` (Robinhood 42/42, Ink 11/11 passing).
+
+Robinhood has 19 Uniswap v3 factory forks; only the one embedded in its Universal Router is
+reachable, so every v3 route uses that factory. GOOGL, AMZN, MSFT and U route WETH→USDG→token,
+since their direct WETH pools are empty or near-empty. Last-resort v4 fallbacks at the 5% fee tier
+cost ~10% round trip; they fire only if both better routes revert.
+
+On Ink, the tokenized stocks (wNVDAx, wMSTRx, wSPYx, wSPCXx, wAAPLx, wNFLXx, wTSLAx) trade against
+Ink USDG on Uniswap v3 at fee 500, so they route WETH→USDG→stock. USDG itself is reached only through
+the WETH/USDG v3 pool at fee 10000 (~1.83 WETH / ~$12.7k USDG at scan time); there is no USDT0/USDG
+or USDC/USDG depth to hop through. That pool is the bottleneck for all eight: small swaps round-trip
+at ~2.1% (fees only), but large sells back to native move price sharply and rely on minOut.
+
 ## Known outstanding work
 
-1. **`setRoutes` is not configured for any quote token on either chain.** Until it is, every swap
-   path through the Universal Router is inert. Verified real pool parameters exist for only two
-   pairs so far: Robinhood USDG (v3 fee 100; v4 fee 100 / tickSpacing 1) and Ink USDT0 (v3 fee
-   3000; v4 fee 3000 / tickSpacing 60). The remaining 24 need an on-chain pool scan.
-2. **`DuckLauncher.initialize()` hardcodes Robinhood's quote-token list with no chain check**
-   (`launcher/DuckLauncher.sol`, `_seedDefaultQuoteTokens`). Live state on both chains has been
-   corrected by owner calls, but a third chain would reproduce the bug. Fix belongs in the next
-   implementation revision.
+1. ~~Routes not configured~~ — **done 2026-09-12.** `SetRoutes.s.sol` broadcast on both chains
+   (re-run on Ink to add USDG and the USDG-routed stocks) and verified on-chain: every route slot
+   matches `RouteTables.sol` on all three families, no extra entries, and every listed quote token
+   is enabled.
+2. **The deployed `DuckLauncher` implementation still hardcodes Robinhood's quote-token list in
+   `initialize()`.** Fixed in source (see tag `v1.0.0-deployed` for the as-deployed code). No
+   upgrade is needed: `initialize()` already ran on both chains and live allowlists were corrected
+   by owner calls; the fix only matters for future deployments.
 3. **No contracts are verified on either explorer.** `foundry.toml` has no `[etherscan]` block.
 4. **Ownership transfer** to a multisig (see warning above).
 5. `test_HardFork_ManyTokensManyWalletsCurveFeeNeverLeaksToVault` has never completed a run — three
