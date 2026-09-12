@@ -1,0 +1,26 @@
+[profile.default]
+src = "script"
+out = "out"
+libs = ["lib"]
+solc = "0.8.36"
+via_ir = true
+optimizer = true
+optimizer_runs = 150
+fs_permissions = [{ access = "read", path = "../" }]
+allow_paths = ["../"]
+remappings = [
+  "duck-lib/=../lib/",
+  "duck-bonding-curve/=../bonding-curve/",
+  "duck-launcher/=../launcher/",
+  "duck-crowdfund/=../crowdfund/",
+  "duck-shared/=../shared/",
+  "duck-lending/=../lending/",
+  "duck-governance/=../governance/",
+  "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+  "@openzeppelin/contracts/=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/",
+  "forge-std/=lib/forge-std/src/",
+]
+
+[rpc_endpoints]
+robinhood = "${ROBINHOOD_RPC_URL}"
+ink = "${INK_RPC_URL}"

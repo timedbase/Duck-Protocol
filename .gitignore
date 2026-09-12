@@ -1,0 +1,13 @@
+# Foundry build output and dependencies
+deploy/out/
+deploy/cache/
+deploy/lib/
+deploy/foundry.lock
+
+# Dry-run broadcasts (simulation only); real broadcasts are kept as a deployment record
+deploy/broadcast/*/*/dry-run/
+
+# Secrets — never commit
+.env
+.env.*
+*.key

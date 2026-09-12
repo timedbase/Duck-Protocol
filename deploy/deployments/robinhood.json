@@ -1,0 +1,66 @@
+{
+  "chainId": 4663,
+  "network": "Robinhood Chain",
+  "rpcUrl": "https://rpc.mainnet.chain.robinhood.com",
+  "deployedAt": "2026-09-06",
+  "deployerTx": "0x47f461c57a50f0e10374fad2e98a2d856023873018d254d7245055db71977e52",
+  "owner": "0x43977b10095Fc5E153F907fe2E888C083fA4Fb66",
+  "platformWallet": "0x586Eb3db5866D76D752916396D63352DB29a47Bd",
+  "contracts": {
+    "DuckVaultConfig": {
+      "proxy": "0x74738a87e4D4E0eB2706724a9314d1b4452ecdFE",
+      "implementation": "0xe721C6B405bd942DB7876878bA3f9E937d32BdAd"
+    },
+    "DuckVault_impl": "0x6A07B7de1F57fB3bb43592711d9b78Eb3D927978",
+    "DuckHookFactory": "0xabE17f3226042C794340E7DF834C47039b807851",
+    "DuckHookV4": "0x2F030392B3472BbE30Dc36e960eFc226744140C4",
+    "DuckVaultFactory": {
+      "proxy": "0xeB191E04445046cDD3f21Bae6e79Ef78bE08D28F",
+      "implementation": "0x5c4f0938FC434b60b57209BbC971544b73876675"
+    },
+    "DuckToken_impl": "0xCA544758ADc9Ab518185FB0784D79E4884ba5cB4",
+    "DuckLocker": {
+      "proxy": "0xbaA2A0F17922729F5Aa826ec5b0B927583260E03",
+      "implementation": "0x2A84711A5c0Ee62118CEee1A37C0dA46a6980353"
+    },
+    "DuckBondingCurve": {
+      "proxy": "0x9AE7383af6ea77037c09459a9aF8f4AEC038f083",
+      "implementation": "0x39D17950BaaD5737d08b027F0494E2C261B37Cf2"
+    },
+    "DuckBondingCurveViews": "0x15b11099304Ceb93aA4Ee76fc4EA08c074F9401e",
+    "DuckLauncher": {
+      "proxy": "0xDA4fAD8E339d1F1f243C810CCDa29de80c5040Dc",
+      "implementation": "0x4054D6551E6815e21C3C2d0Bb567b5D62B50865F"
+    },
+    "DuckCrowdfund": {
+      "proxy": "0x5066B217106De6f7b1A5F43eAa138C3C6306FC7d",
+      "implementation": "0xd12c7924063451aa2a832E951358d1BdD368Fe76"
+    },
+    "DuckTokenGovernor_impl": "0xF1844545C5122143D0bb9a01FC1fae5BBc08Eff5",
+    "TimelockControllerUpgradeable_impl": "0x114C96B9A7dc956903b4480fd8cFf2d5ea755D0c",
+    "DuckTokenGovernorFactory": {
+      "proxy": "0x6A73DA9BC5Ecb8cCD4EccEBf53e3591B2cc30D0d",
+      "implementation": "0x4C93E21b82596f83cB1A9baD11D091557F88737F"
+    }
+  },
+  "libraries": {
+    "BondingCurveMath": "0xdFe02F2758aE1B48f3adFA3B0766a1DEA78Cca75",
+    "DuckClones": "0xA89e4443C3a5810b5959246678598ba1F763b8AE",
+    "V4Math": "0x730dfF5bc6930d12918B4D706296Ed95c1e01664",
+    "V4Minting": "0xcb134FEfAb42f0b3FFb6889D9455F40E5685B5b9",
+    "BondingCurveMigration": "0x8E31354D35100906B1A76ccF6bA1aE7D1BDB4424"
+  },
+  "quoteAssets": {
+    "USDG": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+    "LINK": "0x492641F648a4986844848E0beFE66D14817bCE34",
+    "TAO": "0xf3081494B87e8D5fb7960f066E931D1D0e6E3d67",
+    "PONS": "0x39dBED3a2bd333467115dE45665cC57F813C4571",
+    "CASHCAT": "0x020bfC650A365f8BB26819deAAbF3E21291018b4",
+    "INDEX": "0x56910D4409F3a0C78C64DD8D0545FF0705389870",
+    "SPY": "0x117cc2133c37B721F49dE2A7a74833232B3B4C0C",
+    "NVDA": "0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC",
+    "TSLA": "0x322F0929c4625eD5bAd873c95208D54E1c003b2d",
+    "SPCX": "0x4a0E65A3EcceC6dBe60AE065F2e7bb85Fae35eEa",
+    "AAPL": "0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9"
+  }
+}
