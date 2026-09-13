@@ -9,6 +9,7 @@ import {Route, RouteShape, PoolKey} from "./LaunchRouting.sol";
 
 interface IDuckTokenMig {
     function balanceOf(address account) external view returns (uint256);
+    function launchPhaseLocked() external view returns (bool);
     function postLaunchUnlock() external;
     function setRewardConfig(address hook_, address currency_, address poolManager_) external;
 }
@@ -132,7 +133,7 @@ library BondingCurveMigration {
 
         poolId = _mintV4(tc, token_, migrationAmount, liqTokens, cfg);
 
-        IDuckTokenMig(token_).postLaunchUnlock();
+        _unlockIfLocked(token_);
         tc.raisedQuote = 0;
     }
 
@@ -161,12 +162,20 @@ library BondingCurveMigration {
         }
         tc.raisedQuote = 0;
 
-        IDuckTokenMig(token_).postLaunchUnlock();
+        _unlockIfLocked(token_);
 
         if (liqTokens > 0) {
             if (!IERC20BalanceMig(token_).transfer(to, liqTokens)) revert TransferFailed();
         }
         _payQuote(quote_, to, migrationAmount);
+    }
+
+    // Curve tokens launched on DuckToken stay locked until they migrate. Tokens on DuckCurveToken never had
+    // a lock and don't implement these functions, so the call reverts and there's nothing to unlock.
+    function _unlockIfLocked(address token_) private {
+        try IDuckTokenMig(token_).launchPhaseLocked() returns (bool locked) {
+            if (locked) IDuckTokenMig(token_).postLaunchUnlock();
+        } catch {}
     }
 
     function _payQuote(address quoteToken_, address to, uint256 amount) private {

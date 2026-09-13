@@ -3,15 +3,15 @@ pragma solidity ^0.8.32;
 
 // duckfun.family (alt. duckpad.fun) — DuckOpenToken
 //
-// Shared implementation for the launch families whose tokens are freely transferable from the moment
-// they exist: DuckLauncherToken (instant pool) and DuckCrowdfundToken (crowdfund). Identical to
-// DuckToken -- holder rewards, voting checkpoints, permit, vault link -- minus the launch-phase
-// transfer lock. That lock only ever applied to bonding-curve tokens, which keep using DuckToken;
-// sharing one implementation meant every launcher and crowdfund token also carried a transfer
-// restriction it never used, which token scanners flag.
+// Shared implementation for every launch family's token: DuckCurveToken (bonding curve),
+// DuckLauncherToken (instant pool) and DuckCrowdfundToken (crowdfund), all freely transferable from the
+// moment they exist. Identical to DuckToken -- holder rewards, voting checkpoints, permit, vault link --
+// minus the launch-phase transfer lock, which token scanners flag. That lock kept bonding-curve tokens
+// out of any pool before migration; DuckGenesisHook now makes it unnecessary, since it won't initialize
+// a pool its launchers haven't registered or take liquidity from anyone but them.
 //
-// initToken keeps DuckToken's signature so both launch contracts call it unchanged. They always pass
-// `false` for the lock; `true` is refused rather than silently ignored.
+// initToken keeps DuckToken's signature so the launch contracts call it unchanged. They pass `false` for
+// the lock; `true` is refused rather than silently ignored.
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/VotesUpgradeable.sol";

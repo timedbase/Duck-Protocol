@@ -240,7 +240,9 @@ contract DuckBondingCurve is Initializable, UUPSUpgradeable, Ownable2StepUpgrade
         Alloc memory a = _computeAlloc(p.supplyTier, p.curveBps, p.liquidityBps);
         (uint256 vQuote, uint256 migTarget) = _computeQuoteTargets(p.startVirtualQuote, p.migrationTargetQuote);
 
-        ITokenInit(token).initToken(p.name, p.symbol, a.supply, true, p.metaURI);
+        // No launch-phase lock: DuckGenesisHook only initializes pools this contract registers, at migration,
+        // so a freely transferable token can't be used to seed or front-run its pool.
+        ITokenInit(token).initToken(p.name, p.symbol, a.supply, false, p.metaURI);
         _registerToken(token, msg.sender, p.quoteToken, a, vQuote, migTarget, p.hookFeeBps, p.creatorBps, p.vaultBps, p.burnBps);
         emit TokenCreated(token, msg.sender, p.quoteToken, a.supply, vQuote, migTarget);
 
