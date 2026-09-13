@@ -183,8 +183,8 @@ contract DuckCrowdfund is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
         platformWallet         = platformWallet_;
         campaignFee       = 0.0005 ether;
 
-        contributorBps   = 8_000;
-        lpBps            = 2_000;
+        contributorBps   = 4_500;
+        lpBps            = 5_500;
         campaignDuration = 2 hours;
 
     }
