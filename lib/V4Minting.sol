@@ -23,7 +23,7 @@ library V4Minting {
     int24   private constant MIN_TICK = -887_200;
     int24   private constant MAX_TICK =  887_200;
 
-    // Setup only: initializes the pool, registers it with the hook, and computes the full-range
+    // Setup only: registers the pool with the hook, initializes it, and computes the full-range
     // liquidity these amounts are worth. Mints nothing -- the caller takes (key, ticks, liquidity)
     // and adds it to the PoolManager directly (see LaunchRouting._mintFullRangeDirect).
     struct MintFullRangeSetupParams {
@@ -54,12 +54,15 @@ library V4Minting {
             hooks:       p.hook
         });
 
+        // Registered BEFORE initializing: DuckGenesisHook only lets a registered key be initialized, so
+        // the hook has to know the pool before the PositionManager creates it. DuckHookV4 accepts either
+        // order. If the pool already exists the revert below undoes the registration with it.
+        poolId = keccak256(abi.encode(key));
+        IDuckHookV4Mint(p.hook).registerPool(key, p.token, p.creator, p.hookFeeBps, p.creatorBps, p.vaultBps, p.burnBps);
         int24 tick = IV4PositionManagerMint(p.positionManager).initializePool(
             key, V4Math.sqrtPriceX96FromAmounts(p.amount0, p.amount1)
         );
         if (tick == type(int24).max) revert PoolAlreadyExists();
-        poolId = keccak256(abi.encode(key));
-        IDuckHookV4Mint(p.hook).registerPool(key, p.token, p.creator, p.hookFeeBps, p.creatorBps, p.vaultBps, p.burnBps);
 
         tickLower = MIN_TICK;
         tickUpper = MAX_TICK;
@@ -92,10 +95,12 @@ library V4Minting {
         external returns (int24 tick, bytes32 poolId, PoolKey memory key)
     {
         key = PoolKey({currency0: p.token0, currency1: p.token1, fee: p.fee, tickSpacing: p.tickSpacing, hooks: p.hook});
-        tick = IV4PositionManagerMint(p.positionManager).initializePool(key, p.sqrtPriceX96);
-        if (tick == type(int24).max) revert PoolAlreadyExists();
+        // Register first, then initialize -- same ordering requirement as setupFullRangePool above. The
+        // function keeps its name so already-linked callers don't change.
         poolId = keccak256(abi.encode(key));
         IDuckHookV4Mint(p.hook).registerPool(key, p.token, p.creator, p.hookFeeBps, p.creatorBps, p.vaultBps, p.burnBps);
+        tick = IV4PositionManagerMint(p.positionManager).initializePool(key, p.sqrtPriceX96);
+        if (tick == type(int24).max) revert PoolAlreadyExists();
     }
 
     uint160 private constant MIN_SQRT_PRICE = 4295128739;

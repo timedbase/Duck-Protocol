@@ -524,7 +524,8 @@ contract DuckBondingCurve is Initializable, UUPSUpgradeable, Ownable2StepUpgrade
     }
 
     function _isValidHookFeeBps(uint256 bps) private pure returns (bool) {
-        return bps == 0 || bps == 200 || bps == 400 || bps == 600 || bps == 800 || bps == 1000;
+        // Any rate up to 10% (DuckGenesisHook's MAX_HOOK_FEE_BPS); 0 still means the hook's 2% default.
+        return bps <= 1000;
     }
 
     // Shared validation helpers -- each of these was previously inlined at every call site

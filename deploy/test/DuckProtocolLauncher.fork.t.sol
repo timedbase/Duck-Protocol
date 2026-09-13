@@ -446,24 +446,25 @@ contract DuckProtocolLauncherForkTest is Test {
         _attemptRemoveLiquidity(key, -887_200, 887_200, -1);
     }
 
-    // The creator-configurable hook fee moved from a 0/1/2/3/5% menu to a fixed 2/4/6/8/10% menu
-    // (0 remains a "use the 2% default" sentinel, not a genuine zero-fee choice) -- confirm the old
-    // menu's now-invalid values are rejected and the new menu's boundaries are accepted.
-    function test_HookFeeBpsMenuAcceptsOnlyTwoToTenPercentInTwoPercentSteps() public {
+    // The launcher accepts any hook fee up to 10% (DuckGenesisHook's ceiling), with 0 still meaning the
+    // hook's 2% default -- only rates above 10% are the launcher's to reject. This suite's hook is
+    // DuckHookV4, which still enforces its own 2/4/6/8/10 menu, so a rate below the ceiling is checked
+    // against a menu value here; arbitrary rates are covered end to end in DuckGenesisUpgrade.fork.t.sol.
+    function test_HookFeeBpsAcceptsAnyRateUpToTenPercent() public {
         DuckLauncher.LaunchParams memory p = _baseLaunchParams(_mineTokenSalt(creator));
 
-        p.hookFeeBps = 100; // old 1% menu value, no longer valid
+        p.hookFeeBps = 1001; // just above the 10% ceiling
         vm.prank(creator);
         vm.expectRevert(DuckLauncher.InvalidHookFeeBps.selector);
         launcher.launch{value: 0.0005 ether}(p);
 
-        p.hookFeeBps = 1100; // above the new 10% ceiling
+        p.hookFeeBps = 1100;
         vm.prank(creator);
         vm.expectRevert(DuckLauncher.InvalidHookFeeBps.selector);
         launcher.launch{value: 0.0005 ether}(p);
 
         p.vanitySalt = _mineTokenSalt(creator);
-        p.hookFeeBps = 1000; // exactly the new 10% ceiling -- must succeed
+        p.hookFeeBps = 1000; // exactly the ceiling -- must succeed
         vm.prank(creator);
         (address token,) = launcher.launch{value: 0.0005 ether}(p);
         assertTrue(token != address(0));
