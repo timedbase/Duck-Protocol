@@ -259,7 +259,6 @@ contract DuckLauncher is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         DexConfig storage dex = dexes[p.positionManager];
         if (!dex.enabled) revert UnsupportedDex();
         if (dex.hook == address(0)) revert HookRequired();
-        _requireQuoteSupported(p.quoteToken);
 
         // Must run BEFORE _mintV4 (and any instant-buy swap): minting the LP position is what first
         // moves real balance into the PoolManager, and DuckToken only excludes poolManagerAddr once

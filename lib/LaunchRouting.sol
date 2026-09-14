@@ -252,10 +252,6 @@ library LaunchRoutingExec {
         }
     }
 
-    // Quote-asset check the launch families run at creation. Every quote is supported on these chains;
-    // StablechainsLaunchRouting, linked in this library's place on stablechains, refuses raw native there.
-    function requireQuoteSupported(address) external pure {}
-
     function _ensurePermit2Approved(address token_, address universalRouter) private {
         if (IERC20ApprovalRouting(token_).allowance(address(this), PERMIT2) < type(uint256).max / 2) {
             // Low-level, tolerant of non-standard ERC20s that return no bool (a plain interface call
@@ -328,11 +324,6 @@ abstract contract LaunchRouting {
             routes[quoteToken_].push(routes_[i]);
         }
         emit RoutesSet(quoteToken_, routes_.length);
-    }
-
-    // Runs through the linked routing library so each chain's instance decides (see requireQuoteSupported).
-    function _requireQuoteSupported(address quote_) internal pure {
-        LaunchRoutingExec.requireQuoteSupported(quote_);
     }
 
     function _setUniversalRouter(address router_) internal {

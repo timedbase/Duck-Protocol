@@ -299,7 +299,6 @@ contract DuckCrowdfund is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
         // Checked at launch, not only at the hook's registerPool (which fires at finalize), so a bad
         // combination can't surface as a failure after the raise has already succeeded.
         if (uint256(creatorBps_) + vaultBps_ + burnBps_ != 10_000) revert InvalidVaultBps();
-        _requireQuoteSupported(dexQuoteAsset_);
         if (dexQuoteAsset_ != address(0) && !quoteAssetAllowed[dexQuoteAsset_]) revert QuoteAssetNotAllowed();
 
         if (fee > 0) {
