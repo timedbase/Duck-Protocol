@@ -46,7 +46,7 @@ contract ArcProtocolForkTest is Test {
     DuckGenesisHook hook;
     MockArcUsdc usdc = MockArcUsdc(ARC_USDC);
 
-    function setUp() public {
+    function setUp() public virtual {
         vm.createSelectFork(vm.envOr("ARC_RPC_URL", string("https://rpc.arc-scan.org")));
         assertEq(block.chainid, 5042, "Arc mainnet fork");
         vm.etch(ARC_USDC, address(new MockArcUsdc()).code);
@@ -95,9 +95,10 @@ contract ArcProtocolForkTest is Test {
     function test_CurveTradesUsdcAsNativeAndErc20ThenMigrates() public {
         bytes32 salt = _mineSalt(d.curve, creator, curve.tokenImpl(), 0);
         vm.deal(creator, 3e18);
+        uint256 platformNative = platform.balance;
         vm.prank(creator);
         address token = curve.createToken{value: 3e18}(_curveParams(ARC_USDC, salt));
-        assertEq(platform.balance, 1e18, "1 USDC creation fee");
+        assertEq(platform.balance - platformNative, 1e18, "1 USDC creation fee");
         assertEq(creator.balance, 0, "the other 2 USDC went into the early buy");
         assertGt(IArcLaunchToken(token).balanceOf(creator), 0, "early buy filled");
 
@@ -149,10 +150,11 @@ contract ArcProtocolForkTest is Test {
     function test_LauncherInstantBuyWithNativeUsdcAndHookFeesInUsdc() public {
         bytes32 salt = _mineSalt(d.launcher, creator, launcher.tokenImpl(), 0);
         vm.deal(creator, 11e18);
+        uint256 platformNative = platform.balance;
         vm.prank(creator);
         (address token, bytes32 poolId) = launcher.launch{value: 11e18}(_launchParams(ARC_USDC, salt));
         assertEq(creator.balance, 0);
-        assertEq(platform.balance, 1e18, "1 USDC launch fee");
+        assertEq(platform.balance - platformNative, 1e18, "1 USDC launch fee");
         assertGt(IArcLaunchToken(token).balanceOf(creator), 0, "10 native USDC bought in at launch");
 
         uint256 accrued = hook.accruedFees(poolId);
