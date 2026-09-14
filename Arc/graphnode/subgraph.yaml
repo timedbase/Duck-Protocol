@@ -1,0 +1,262 @@
+specVersion: 0.0.9
+description: duckfun.family — bonding curve, instant launch, and crowdfund activity on Arc chain.
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  - kind: ethereum
+    name: DuckIncubation
+    network: arc
+    source:
+      address: "0x5c4f0938FC434b60b57209BbC971544b73876675"
+      abi: DuckIncubation
+      startBlock: 18957345
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - Trade
+        - Migration
+        - CurveFeeClaim
+      abis:
+        - name: DuckIncubation
+          file: ./abis/DuckIncubation.json
+        - name: TokenMetadata
+          file: ./abis/TokenMetadata.json
+      eventHandlers:
+        - event: TokenCreated(indexed address,indexed address,address,uint256,uint256,uint256,bool,uint256)
+          handler: handleTokenCreated
+        - event: TokenBought(indexed address,indexed address,uint256,uint256,uint256,uint256)
+          handler: handleTokenBought
+        - event: TokenSold(indexed address,indexed address,uint256,uint256,uint256)
+          handler: handleTokenSold
+        - event: TokenMigrated(indexed address,bytes32,uint256,uint256)
+          handler: handleTokenMigrated
+        - event: EmergencyMigrated(indexed address,indexed address,uint256,uint256)
+          handler: handleEmergencyMigrated
+        - event: CurveFeeClaimed(indexed address,indexed address,uint256,uint256)
+          handler: handleCurveFeeClaimed
+        - event: DexConfigUpdated(address,address,address,address)
+          handler: handleDexConfigUpdated
+      file: ./src/duck-incubation.ts
+
+  - kind: ethereum
+    name: DuckLauncher
+    network: arc
+    source:
+      address: "0x2A84711A5c0Ee62118CEee1A37C0dA46a6980353"
+      abi: DuckLauncher
+      startBlock: 18957345
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Token
+      abis:
+        - name: DuckLauncher
+          file: ./abis/DuckLauncher.json
+        - name: TokenMetadata
+          file: ./abis/TokenMetadata.json
+      eventHandlers:
+        - event: TokenLaunched(indexed address,indexed address,indexed address,address,address,bytes32,uint256)
+          handler: handleTokenLaunched
+        - event: DexAdded(indexed address,address,address,address)
+          handler: handleDexAdded
+      file: ./src/duck-launcher.ts
+
+  - kind: ethereum
+    name: DuckRaise
+    network: arc
+    source:
+      address: "0x9AE7383af6ea77037c09459a9aF8f4AEC038f083"
+      abi: DuckRaise
+      startBlock: 18957345
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - Campaign
+        - Contribution
+      abis:
+        - name: DuckRaise
+          file: ./abis/DuckRaise.json
+        - name: TokenMetadata
+          file: ./abis/TokenMetadata.json
+      eventHandlers:
+        - event: CampaignCreated(indexed uint256,indexed address,indexed address,string,string,address,uint256,uint256,uint256)
+          handler: handleCampaignCreated
+        - event: Contributed(indexed uint256,indexed address,uint256)
+          handler: handleContributed
+        - event: CampaignSucceeded(indexed uint256,indexed address,uint256)
+          handler: handleCampaignSucceeded
+        - event: CampaignFailed(indexed uint256,uint256,uint256)
+          handler: handleCampaignFailed
+        - event: Claimed(indexed uint256,indexed address,uint256)
+          handler: handleClaimed
+        - event: Refunded(indexed uint256,indexed address,uint256)
+          handler: handleRefunded
+        - event: DexConfigSet(address,address,address,address)
+          handler: handleDexConfigSet
+      file: ./src/duck-raise.ts
+
+  # Unlike Ink, DuckLockerArc also handles V3 positions directly (no hook
+  # exists on V3 to host fee-claims/CTO on) -- see the extra eventHandlers
+  # below and src/duck-locker.ts's V3 branch.
+  - kind: ethereum
+    name: DuckLocker
+    network: arc
+    source:
+      address: "0x74738a87e4D4E0eB2706724a9314d1b4452ecdFE"
+      abi: DuckLocker
+      startBlock: 18957345
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Position
+        - LPFeeClaim
+        - V3CTOApplication
+      abis:
+        - name: DuckLocker
+          file: ./abis/DuckLocker.json
+      eventHandlers:
+        - event: PositionRegistered(indexed address,indexed uint256,bytes32,address,address)
+          handler: handlePositionRegistered
+        - event: FeesClaimed(indexed address,uint256,uint256)
+          handler: handleFeesClaimed
+        - event: FeesClaimedV3(indexed address,uint256,uint256,uint256)
+          handler: handleFeesClaimedV3
+        - event: V3CTOApplied(indexed address,indexed address,address,uint256)
+          handler: handleV3CTOApplied
+        - event: V3CTOApproved(indexed address,address)
+          handler: handleV3CTOApproved
+        - event: V3CTORejected(indexed address,indexed address)
+          handler: handleV3CTORejected
+      file: ./src/duck-locker.ts
+
+  - kind: ethereum
+    name: DuckHookV4
+    network: arc
+    source:
+      address: "0x5C53161656C8b13883b2CD9936Acf6FcA56100c4"
+      abi: DuckHookV4
+      startBlock: 18957345
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Pool
+        - HookFeeClaim
+        - CTOApplication
+      abis:
+        - name: DuckHookV4
+          file: ./abis/DuckHookV4.json
+      eventHandlers:
+        - event: PoolRegistered(indexed bytes32,indexed address,indexed address,uint256)
+          handler: handlePoolRegistered
+        - event: FeesClaimed(indexed bytes32,uint256)
+          handler: handleFeesClaimed
+        - event: CTOApplied(indexed bytes32,indexed address,address,uint256)
+          handler: handleCTOApplied
+        - event: CTOApproved(indexed bytes32,address)
+          handler: handleCTOApproved
+        - event: CTORejected(indexed bytes32,indexed address)
+          handler: handleCTORejected
+      file: ./src/duck-hook.ts
+
+  # Shared Uniswap V4 singleton -- emits Swap/ModifyLiquidity for every pool
+  # on Arc, not just this platform's. The mapping loads the Pool entity by
+  # poolId and returns early if it's not one of ours (see PoolRegistered
+  # above, which always fires before any Swap/ModifyLiquidity can occur on
+  # a freshly-created pool, so the Pool entity is guaranteed to exist by
+  # then for pools this platform created).
+  - kind: ethereum
+    name: PoolManager
+    network: arc
+    source:
+      address: "0x8366a39CC670B4001A1121B8F6A443A643e40951"
+      abi: PoolManager
+      startBlock: 18957345
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - PoolSwap
+        - PoolLiquidityChange
+      abis:
+        - name: PoolManager
+          file: ./abis/PoolManager.json
+      eventHandlers:
+        - event: Swap(indexed bytes32,indexed address,int128,int128,uint160,uint128,int24,uint24)
+          handler: handleSwap
+        - event: ModifyLiquidity(indexed bytes32,indexed address,int24,int24,int256,bytes32)
+          handler: handleModifyLiquidity
+      file: ./src/pool-manager.ts
+
+  # No V3 PoolManager singleton equivalent is indexed here -- V3 pools are
+  # per-pair standalone contracts (no shared emitter to watch generically),
+  # and DuckLockerArc's own FeesClaimedV3/PositionRegistered already cover
+  # everything this platform needs from a V3 pool's activity.
+
+templates:
+  # Any hook rotated in after deployment via addDex (DuckLauncher) /
+  # setDexConfig (DuckIncubation, DuckRaise) -- the ORIGINAL, constructor-set
+  # hook above is a static dataSource since it never has a DexAdded/
+  # DexConfigUpdated/DexConfigSet event of its own to trigger a .create()
+  # from. Mirrors the same fix applied on Ink after a real hook rotation
+  # there silently orphaned every token launched after it.
+  - kind: ethereum
+    name: DuckHookV4Dynamic
+    network: arc
+    source:
+      abi: DuckHookV4
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Pool
+        - HookFeeClaim
+        - CTOApplication
+      abis:
+        - name: DuckHookV4
+          file: ./abis/DuckHookV4.json
+      eventHandlers:
+        - event: PoolRegistered(indexed bytes32,indexed address,indexed address,uint256)
+          handler: handlePoolRegisteredDynamic
+        - event: FeesClaimed(indexed bytes32,uint256)
+          handler: handleFeesClaimedDynamic
+        - event: CTOApplied(indexed bytes32,indexed address,address,uint256)
+          handler: handleCTOAppliedDynamic
+        - event: CTOApproved(indexed bytes32,address)
+          handler: handleCTOApprovedDynamic
+        - event: CTORejected(indexed bytes32,indexed address)
+          handler: handleCTORejectedDynamic
+      file: ./src/duck-hook.ts
+
+  - kind: ethereum
+    name: DuckToken
+    network: arc
+    source:
+      abi: ERC20
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Holder
+      abis:
+        - name: ERC20
+          file: ./abis/ERC20.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
+      file: ./src/token.ts

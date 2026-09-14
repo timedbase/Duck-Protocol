@@ -1,0 +1,364 @@
+# duckfun.family subgraph schema — Ink chain (57073).
+#
+# Scoped to lifecycle/activity events, not governance/admin config
+# (DexAdded, PlatformWalletSet, Timelock*, rescue events, etc. are left
+# unindexed — they're rarely-changing owner-only config, cheaper to read
+# directly via a `cast call`/RPC read when needed than to maintain entities
+# for). Token.family distinguishes which of the three launcher contracts
+# created a given token; DuckHookV4's Pool applies to tokens from any family
+# once they have a live V4 pool (immediately for CURVE, at launch for
+# INSTANT, at campaign success for CAMPAIGN).
+
+enum Family {
+  CURVE
+  INSTANT
+  CAMPAIGN
+}
+
+enum TradeSide {
+  BUY
+  SELL
+}
+
+enum CTOStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+type Token @entity(immutable: false) {
+  id: ID! # token contract address
+  family: Family!
+  creator: Bytes!
+  quoteToken: Bytes
+  totalSupply: BigInt!
+  createdAt: BigInt!
+  createdAtBlock: BigInt!
+  createdAtTx: Bytes!
+
+  # Read directly off the token contract at creation time (try_name/
+  # try_symbol/try_metaURI -- none of TokenCreated/TokenLaunched carry these,
+  # and CampaignCreated only carries name/symbol, not metaURI). Null only if
+  # the call somehow failed at index time.
+  name: String
+  symbol: String
+  metaUri: String
+
+  # Set by DuckMetaOverride (a standalone, platform-owned registry) when the
+  # platform has registered this token with a replacement metaURI -- e.g. to
+  # fix wrong metadata from creation, or for a CTO whose takeover needs the
+  # presentation corrected. Null means not overridden -- metaUri above is
+  # still the one to use. Non-null means every consumer (backend, interface)
+  # should treat THIS as authoritative instead of metaUri, without the
+  # original ever actually changing on-chain.
+  metaOverrideUri: String
+
+  # Running total of every Transfer to the standard 0x…dEaD burn address,
+  # across every family -- the curve-migration penalty burn, DuckLocker's
+  # LP-fee token-side burn, and any manual send all land here identically,
+  # since it's tallied generically off Transfer events, not any one
+  # mechanism's own event.
+  burnedSupply: BigInt!
+
+  # Incremented/decremented in the DuckToken Transfer handler exactly once
+  # per zero-balance crossing (never double-counted for a partial transfer
+  # that leaves an existing holder still holding something).
+  holderCount: Int!
+
+  # Timestamp of the most recent real trade (curve Trade or pool PoolSwap),
+  # updated alongside lastPrice in the same recordTrade call. Null until the
+  # first real trade -- lets the interface rank "most recently active"
+  # honestly (distinct from createdAt, which never changes).
+  lastTradeAt: BigInt
+
+  # Updated to the ratio of the most recent trade (curve Trade or pool
+  # PoolSwap, whichever family/phase applies), decimal-normalized to a real
+  # human-readable quote-asset-per-token price (quote decimals vary: 18 for
+  # native ETH, 6 for USDC/USDT0 -- this is NOT the raw amount ratio). Null
+  # until the first real trade. Real market cap = lastPrice * totalSupply.
+  lastPrice: BigDecimal
+
+  # lastPrice converted to USD: USDC/USDT0 treated as pegged 1:1 (no
+  # separate market needed), ETH converted via ReferencePrice (the real
+  # ETH/USDC and ETH/USDT0 external pool spot price, indexed off the same
+  # shared PoolManager). Null for a platform-token-quoted pool -- that
+  # token's own USD value isn't resolvable without its own tracked market,
+  # so this is left honestly unknown rather than fabricated.
+  lastPriceUsd: BigDecimal
+
+  # Running cumulative total, all-time, in raw quote-asset units -- updated
+  # on every Trade/PoolSwap alongside lastPrice. Rolling 24h volume is
+  # derived separately (see TokenHourData) since "last 24 hours from now" is
+  # a moving target a single static field can't represent.
+  volumeAllTime: BigInt!
+  # Same total, converted to USD at each trade's own historical reference
+  # price (not today's) -- null contributions (unresolvable platform-token
+  # quotes) are simply skipped, so this under-counts only that case.
+  volumeAllTimeUsd: BigDecimal!
+
+  # CURVE only (DuckIncubation)
+  virtualQuote: BigInt
+  migrationTarget: BigInt
+  antibotEnabled: Boolean
+  tradingBlock: BigInt
+  migrated: Boolean
+  bcTokensSold: BigInt
+  raisedQuote: BigInt
+
+  # INSTANT only (DuckLauncher) -- CAMPAIGN tokens also get these once their
+  # campaign succeeds and DuckRaise seeds their pool.
+  positionManager: Bytes
+  hook: Bytes
+  tokenId: BigInt
+
+  # CAMPAIGN only (DuckRaise)
+  campaign: Campaign
+
+  # Pool/Position/Migration are keyed by this same token address -- query
+  # them directly by id (they aren't back-referenced here to avoid a
+  # cross-contract event-ordering dependency: PositionRegistered/
+  # PoolRegistered can fire before this Token entity exists yet for
+  # INSTANT/CAMPAIGN tokens, since the locker/hook registration happens
+  # before TokenLaunched/CampaignSucceeded is emitted in those contracts).
+  trades: [Trade!]! @derivedFrom(field: "token")
+  curveFeeClaims: [CurveFeeClaim!]! @derivedFrom(field: "token")
+  holders: [Holder!]! @derivedFrom(field: "token")
+}
+
+type Trade @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  token: Token!
+  trader: Bytes!
+  side: TradeSide!
+  quoteAmount: BigInt!
+  tokenAmount: BigInt!
+  tokensToDead: BigInt
+  raisedQuoteAfter: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+# One per CURVE token -- migrate()/emergencyMigrate() can only ever succeed once.
+type Migration @entity(immutable: true) {
+  id: ID! # token address
+  token: Token!
+  poolId: Bytes
+  liquidityQuote: BigInt!
+  liquidityTokens: BigInt!
+  emergency: Boolean!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type CurveFeeClaim @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  token: Token!
+  creator: Bytes!
+  creatorAmount: BigInt!
+  platformAmount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type Campaign @entity(immutable: false) {
+  id: ID! # DuckRaise-internal campaignId
+  token: Token
+  creator: Bytes!
+  name: String!
+  symbol: String!
+  dexQuoteAsset: Bytes!
+  goal: BigInt!
+  startTime: BigInt!
+  deadline: BigInt!
+  totalRaised: BigInt!
+  succeeded: Boolean!
+  failed: Boolean!
+  createdAt: BigInt!
+  createdAtBlock: BigInt!
+  createdAtTx: Bytes!
+  resolvedAt: BigInt
+  resolvedAtBlock: BigInt
+  contributions: [Contribution!]! @derivedFrom(field: "campaign")
+}
+
+type Contribution @entity(immutable: false) {
+  id: ID! # campaignId-contributor
+  campaign: Campaign!
+  contributor: Bytes!
+  amount: BigInt!
+  claimed: Boolean!
+  claimedAmount: BigInt!
+  refunded: Boolean!
+  refundedAmount: BigInt!
+  firstContributedAt: BigInt!
+  lastContributedAt: BigInt!
+}
+
+# One per token with a locked LP position (shared DuckLocker, all three
+# families). poolId/hook are zero for a V3 position (isV3: true) -- V3 has
+# no hook, so DuckLockerArc stores the creator directly instead of it being
+# looked up from one (see Pool.creator on Ink's hook-based equivalent).
+type Position @entity(immutable: false) {
+  id: ID! # token address
+  token: Token!
+  tokenId: BigInt!
+  poolId: Bytes!
+  hook: Bytes!
+  positionManager: Bytes!
+  isV3: Boolean!
+  creator: Bytes
+  registeredAt: BigInt!
+  registeredAtBlock: BigInt!
+  registeredAtTx: Bytes!
+  totalBurned: BigInt!
+  totalToPlatform: BigInt!
+  totalToCreator: BigInt!
+  # Tracks the currently-pending V3 CTO application's id (mirrors Pool's
+  # pendingCTO on the V4 side) so V3CTOApproved/V3CTORejected, which don't
+  # carry a fresh application id themselves, can find the right one.
+  pendingCTO: String
+  feeClaims: [LPFeeClaim!]! @derivedFrom(field: "position")
+  ctoApplications: [V3CTOApplication!]! @derivedFrom(field: "position")
+}
+
+# toCreator is null for a V4 claim (LP fees only ever burn the token side and
+# send the quote side to the platform there -- no separate creator cut
+# exists on V4, that's the hook's own HookFeeClaim instead) and populated
+# for a V3 claim, where the position's own fee stream is the only place a
+# creator cut on V3 comes from.
+type LPFeeClaim @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  position: Position!
+  burned: BigInt!
+  toPlatform: BigInt!
+  toCreator: BigInt
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+# V3's own CTO mechanism, hosted directly on DuckLockerArc (no hook exists
+# on V3 to host it, unlike V4's CTOApplication/Pool above) -- keyed by
+# Position instead of Pool, same pending-application/owner-approval shape.
+type V3CTOApplication @entity(immutable: false) {
+  id: ID! # token-txHash-logIndex (a rejected applicant can re-apply)
+  position: Position!
+  applicant: Bytes!
+  newCreator: Bytes!
+  paid: BigInt!
+  status: CTOStatus!
+  appliedAt: BigInt!
+  appliedAtBlock: BigInt!
+  appliedAtTx: Bytes!
+  resolvedAt: BigInt
+  resolvedAtBlock: BigInt
+}
+
+# One per token registered with the shared DuckHookV4 (same set of tokens as
+# Position, keyed by the hook's own poolId instead).
+type Pool @entity(immutable: false) {
+  id: ID! # poolId (bytes32)
+  token: Token!
+  creator: Bytes!
+  hookFeeBps: BigInt!
+  registeredAt: BigInt!
+  registeredAtBlock: BigInt!
+  swapCount: BigInt!
+  # Tracks the currently-pending application's id (only one can be pending
+  # at a time -- a second application while one is pending reverts on-chain)
+  # so CTOApproved/CTORejected, which don't carry a fresh application id
+  # themselves, can find the right CTOApplication entity to resolve.
+  pendingCTO: String
+  ctoApplications: [CTOApplication!]! @derivedFrom(field: "pool")
+  feeClaims: [HookFeeClaim!]! @derivedFrom(field: "pool")
+  swaps: [PoolSwap!]! @derivedFrom(field: "pool")
+  liquidityChanges: [PoolLiquidityChange!]! @derivedFrom(field: "pool")
+}
+
+# Raw Uniswap V4 PoolManager activity for pools this platform created --
+# filtered in the mapping (Pool.load(id) != null) since PoolManager is a
+# shared singleton emitting Swap/ModifyLiquidity for every pool on Ink, not
+# just ours.
+type PoolSwap @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  pool: Pool!
+  sender: Bytes!
+  amount0: BigInt!
+  amount1: BigInt!
+  sqrtPriceX96: BigInt!
+  liquidity: BigInt!
+  tick: Int!
+  fee: Int!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type PoolLiquidityChange @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  pool: Pool!
+  sender: Bytes!
+  tickLower: Int!
+  tickUpper: Int!
+  liquidityDelta: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type HookFeeClaim @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  pool: Pool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type CTOApplication @entity(immutable: false) {
+  id: ID! # poolId-txHash-logIndex (a rejected applicant can re-apply)
+  pool: Pool!
+  applicant: Bytes!
+  newCreator: Bytes!
+  paid: BigInt!
+  status: CTOStatus!
+  appliedAt: BigInt!
+  appliedAtBlock: BigInt!
+  appliedAtTx: Bytes!
+  resolvedAt: BigInt
+  resolvedAtBlock: BigInt
+}
+
+type Holder @entity(immutable: false) {
+  id: ID! # token-account
+  token: Token!
+  account: Bytes!
+  balance: BigInt!
+  updatedAt: BigInt!
+  updatedAtBlock: BigInt!
+}
+
+# One row per token per hour it actually traded in -- lets a rolling 24h
+# volume be computed by summing the last 24 of these (a handful of rows),
+# instead of re-scanning every raw trade on every read.
+type TokenHourData @entity(immutable: false) {
+  id: ID! # token address + "-" + floor(unix timestamp / 3600)
+  token: Token!
+  hourStartUnix: BigInt!
+  volumeQuote: BigInt!
+  volumeUsd: BigDecimal!
+  # The token's lastPrice/lastPriceUsd as of the most recent trade THIS
+  # hour -- lets 24h price change be computed as (current price / the
+  # nearest bucket at-or-before 24h ago) without tracking a separate
+  # time-series, and without scanning raw trades on every read.
+  closePrice: BigDecimal
+  closePriceUsd: BigDecimal
+}
+
+# No ReferencePrice entity here (unlike Ink's schema) -- Arc has no WETH and
+# no ETH<->stablecoin reference pool to track. Native currency on Arc IS
+# USDC (18-decimal), already pegged 1:1 to USD, so lib.ts resolves it
+# directly with no live reference price needed at all.

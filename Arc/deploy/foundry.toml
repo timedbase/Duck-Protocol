@@ -1,0 +1,27 @@
+# Arc build (chain 5042). Compiles only the contracts under Arc/, against the dependencies checked out in
+# DuckProtocol/deploy/lib.
+[profile.default]
+src = "script"
+out = "out"
+libs = ["../../deploy/lib"]
+solc = "0.8.36"
+via_ir = true
+optimizer = true
+optimizer_runs = 150
+fs_permissions = [{ access = "read", path = "../" }]
+allow_paths = ["../", "../../deploy/lib"]
+remappings = [
+  "duck-lib/=../lib/",
+  "duck-bonding-curve/=../bonding-curve/",
+  "duck-launcher/=../launcher/",
+  "duck-crowdfund/=../crowdfund/",
+  "duck-shared/=../shared/",
+  "duck-lending/=../lending/",
+  "duck-governance/=../governance/",
+  "@openzeppelin/contracts-upgradeable/=../../deploy/lib/openzeppelin-contracts-upgradeable/contracts/",
+  "@openzeppelin/contracts/=../../deploy/lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/",
+  "forge-std/=../../deploy/lib/forge-std/src/",
+]
+
+[rpc_endpoints]
+arc = "${ARC_RPC_URL}"
