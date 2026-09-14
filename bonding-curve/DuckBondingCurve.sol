@@ -228,6 +228,7 @@ contract DuckBondingCurve is Initializable, UUPSUpgradeable, Ownable2StepUpgrade
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function createToken(BaseParams memory p) external payable nonReentrant returns (address token) {
+        _requireQuoteSupported(p.quoteToken);
         if (p.quoteToken != address(0) && !quoteTokenAllowed[p.quoteToken]) revert QuoteTokenNotAllowed();
         if (!_isValidHookFeeBps(p.hookFeeBps)) revert InvalidHookFeeBps();
         // Any three shares of the 70% remainder are allowed as long as they sum to the whole.

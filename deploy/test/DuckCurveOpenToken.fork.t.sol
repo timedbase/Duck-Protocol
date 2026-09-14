@@ -18,6 +18,10 @@ import {DuckGenesisHook} from "duck-shared/DuckGenesisHook.sol";
 import {TokenConfig} from "duck-lib/DuckTypes.sol";
 import {PoolKey} from "duck-lib/LaunchRouting.sol";
 
+interface IUUPSCurveTest {
+    function upgradeToAndCall(address newImplementation, bytes calldata data) external payable;
+}
+
 interface ILaunchLockable {
     function launchPhaseLocked() external view returns (bool);
 }
@@ -43,6 +47,10 @@ contract DuckCurveOpenTokenForkTest is Test {
     address constant STATE_VIEW       = 0xF3334192D15450CdD385c8B70e03f9A6bD9E673b;
     bytes32 constant IMPL_SLOT        = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
     uint160 constant ONE_TO_ONE       = 79228162514264337593543950336; // sqrt(1) * 2^96
+    // The curve as it was before UpgradeCurveOpenToken went live: the DuckGenesis implementation, cloning
+    // the locked DuckToken. Restored on the fork so a pre-upgrade (locked) token can still be created.
+    address constant PRE_UPGRADE_CURVE_IMPL = 0xbFC080C962E41F0bb8E933BEf0706Af926cfEDd2;
+    address constant LOCKED_TOKEN_IMPL      = 0x83A491C728b0485A887fE9D7360C4Ae7eF8B1461;
 
     DuckBondingCurve curve = DuckBondingCurve(payable(CURVE));
     address creator = makeAddr("curve-creator");
@@ -62,7 +70,13 @@ contract DuckCurveOpenTokenForkTest is Test {
     }
 
     function test_TokenLaunchedLockedBeforeUpgradeStillMigratesAndUnlocks() public {
-        address token = _create(curve.tokenImpl());
+        // The upgrade is live on Robinhood Chain now, so roll the fork's curve back to the state it
+        // replaced before creating the locked token this test is about.
+        vm.startPrank(OWNER);
+        IUUPSCurveTest(CURVE).upgradeToAndCall(PRE_UPGRADE_CURVE_IMPL, "");
+        curve.setTokenImpl(LOCKED_TOKEN_IMPL);
+        vm.stopPrank();
+        address token = _create(LOCKED_TOKEN_IMPL);
         assertTrue(ILaunchLockable(token).launchPhaseLocked(), "pre-upgrade curve tokens carry the lock");
 
         vm.prank(buyer);
