@@ -5,10 +5,6 @@
     "stateMutability": "nonpayable"
   },
   {
-    "type": "receive",
-    "stateMutability": "payable"
-  },
-  {
     "type": "function",
     "name": "MAX_FEE_SPLITS",
     "inputs": [],
@@ -23,32 +19,6 @@
   },
   {
     "type": "function",
-    "name": "TIMELOCK_DELAY",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "TL_UPGRADE",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "UPGRADE_INTERFACE_VERSION",
     "inputs": [],
     "outputs": [
@@ -56,6 +26,19 @@
         "name": "",
         "type": "string",
         "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "VANITY_SUFFIX",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
       }
     ],
     "stateMutability": "view"
@@ -125,7 +108,7 @@
       }
     ],
     "outputs": [],
-    "stateMutability": "payable"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -157,19 +140,6 @@
   },
   {
     "type": "function",
-    "name": "cancelAction",
-    "inputs": [
-      {
-        "name": "actionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "claimCurveFee",
     "inputs": [
       {
@@ -188,7 +158,7 @@
       {
         "name": "p",
         "type": "tuple",
-        "internalType": "struct DuckIncubationArc.BaseParams",
+        "internalType": "struct DuckBondingCurve.BaseParams",
         "components": [
           {
             "name": "name",
@@ -201,9 +171,9 @@
             "internalType": "string"
           },
           {
-            "name": "totalSupply",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "supplyTier",
+            "type": "uint8",
+            "internalType": "uint8"
           },
           {
             "name": "curveBps",
@@ -241,14 +211,19 @@
             "internalType": "uint256"
           },
           {
-            "name": "enableAntibot",
-            "type": "bool",
-            "internalType": "bool"
+            "name": "creatorBps",
+            "type": "uint16",
+            "internalType": "uint16"
           },
           {
-            "name": "antibotBlocks",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "vaultBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "burnBps",
+            "type": "uint16",
+            "internalType": "uint16"
           },
           {
             "name": "metaURI",
@@ -300,7 +275,7 @@
   },
   {
     "type": "function",
-    "name": "executeRoute",
+    "name": "executeSwapRoute",
     "inputs": [
       {
         "name": "route_",
@@ -308,44 +283,9 @@
         "internalType": "struct Route",
         "components": [
           {
-            "name": "shape",
-            "type": "uint8",
-            "internalType": "enum RouteShape"
-          },
-          {
             "name": "enabled",
             "type": "bool",
             "internalType": "bool"
-          },
-          {
-            "name": "router",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "routerNoDeadline",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "path",
-            "type": "address[]",
-            "internalType": "address[]"
-          },
-          {
-            "name": "fees",
-            "type": "uint24[]",
-            "internalType": "uint24[]"
-          },
-          {
-            "name": "routers",
-            "type": "address[]",
-            "internalType": "address[]"
-          },
-          {
-            "name": "singleton",
-            "type": "address",
-            "internalType": "address"
           },
           {
             "name": "hook",
@@ -365,9 +305,19 @@
         ]
       },
       {
+        "name": "universalRouter_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
         "name": "quoteToken_",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "buyQuote_",
+        "type": "bool",
+        "internalType": "bool"
       },
       {
         "name": "amountIn_",
@@ -392,83 +342,7 @@
         "internalType": "uint256"
       }
     ],
-    "stateMutability": "payable"
-  },
-  {
-    "type": "function",
-    "name": "getAmountOut",
-    "inputs": [
-      {
-        "name": "token_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "quoteIn",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "tokensOut",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "feeQuote",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getAmountOutSell",
-    "inputs": [
-      {
-        "name": "token_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "tokensIn",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "quoteOut",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "feeQuote",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getAntibotBlocksRange",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "min",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "max",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "pure"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -503,29 +377,10 @@
   },
   {
     "type": "function",
-    "name": "getSpotPrice",
+    "name": "getTokenConfig",
     "inputs": [
       {
-        "name": "token_",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "price",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getToken",
-    "inputs": [
-      {
-        "name": "token_",
+        "name": "token",
         "type": "address",
         "internalType": "address"
       }
@@ -612,17 +467,22 @@
             "internalType": "uint256"
           },
           {
-            "name": "antibotEnabled",
-            "type": "bool",
-            "internalType": "bool"
+            "name": "creatorBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "vaultBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "burnBps",
+            "type": "uint16",
+            "internalType": "uint16"
           },
           {
             "name": "creationBlock",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "tradingBlock",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -665,22 +525,12 @@
     "name": "initialize",
     "inputs": [
       {
-        "name": "weth_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
         "name": "v4PositionManager_",
         "type": "address",
         "internalType": "address"
       },
       {
         "name": "v4Singleton_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "v4Permit2_",
         "type": "address",
         "internalType": "address"
       },
@@ -698,41 +548,10 @@
         "name": "tokenImpl_",
         "type": "address",
         "internalType": "address"
-      },
-      {
-        "name": "locker_",
-        "type": "address",
-        "internalType": "address"
       }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "locker",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "maxSupply",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -775,16 +594,74 @@
   },
   {
     "type": "function",
-    "name": "minSupply",
-    "inputs": [],
+    "name": "mintFullRangeDirect",
+    "inputs": [
+      {
+        "name": "singleton_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "key",
+        "type": "tuple",
+        "internalType": "struct PoolKey",
+        "components": [
+          {
+            "name": "currency0",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "currency1",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "fee",
+            "type": "uint24",
+            "internalType": "uint24"
+          },
+          {
+            "name": "tickSpacing",
+            "type": "int24",
+            "internalType": "int24"
+          },
+          {
+            "name": "hooks",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      },
+      {
+        "name": "tickLower",
+        "type": "int24",
+        "internalType": "int24"
+      },
+      {
+        "name": "tickUpper",
+        "type": "int24",
+        "internalType": "int24"
+      },
+      {
+        "name": "liquidity",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
     "outputs": [
       {
-        "name": "",
+        "name": "amount0",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount1",
         "type": "uint256",
         "internalType": "uint256"
       }
     ],
-    "stateMutability": "view"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -840,48 +717,6 @@
   },
   {
     "type": "function",
-    "name": "predictTokenAddress",
-    "inputs": [
-      {
-        "name": "creator_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "userSalt_",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "impl_",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "predicted",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "proposeUpgrade",
-    "inputs": [
-      {
-        "name": "newImpl_",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "proxiableUUID",
     "inputs": [],
     "outputs": [
@@ -921,19 +756,6 @@
   },
   {
     "type": "function",
-    "name": "rescueETH",
-    "inputs": [
-      {
-        "name": "to",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "rescueToken",
     "inputs": [
       {
@@ -967,29 +789,9 @@
     ],
     "outputs": [
       {
-        "name": "shape",
-        "type": "uint8",
-        "internalType": "enum RouteShape"
-      },
-      {
         "name": "enabled",
         "type": "bool",
         "internalType": "bool"
-      },
-      {
-        "name": "router",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "routerNoDeadline",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "singleton",
-        "type": "address",
-        "internalType": "address"
       },
       {
         "name": "hook",
@@ -1025,6 +827,39 @@
       },
       {
         "name": "minQuoteOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "deadline",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "sellForNative",
+    "inputs": [
+      {
+        "name": "token_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amountIn",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "minQuoteOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "minNativeOut",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -1083,11 +918,6 @@
         "internalType": "address"
       },
       {
-        "name": "permit2_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
         "name": "hook_",
         "type": "address",
         "internalType": "address"
@@ -1121,19 +951,6 @@
             "internalType": "uint16"
           }
         ]
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setLocker",
-    "inputs": [
-      {
-        "name": "locker_",
-        "type": "address",
-        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -1198,44 +1015,9 @@
         "internalType": "struct Route[]",
         "components": [
           {
-            "name": "shape",
-            "type": "uint8",
-            "internalType": "enum RouteShape"
-          },
-          {
             "name": "enabled",
             "type": "bool",
             "internalType": "bool"
-          },
-          {
-            "name": "router",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "routerNoDeadline",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "path",
-            "type": "address[]",
-            "internalType": "address[]"
-          },
-          {
-            "name": "fees",
-            "type": "uint24[]",
-            "internalType": "uint24[]"
-          },
-          {
-            "name": "routers",
-            "type": "address[]",
-            "internalType": "address[]"
-          },
-          {
-            "name": "singleton",
-            "type": "address",
-            "internalType": "address"
           },
           {
             "name": "hook",
@@ -1260,24 +1042,6 @@
   },
   {
     "type": "function",
-    "name": "setSupplyBounds",
-    "inputs": [
-      {
-        "name": "minSupply_",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "maxSupply_",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "setTokenImpl",
     "inputs": [
       {
@@ -1291,22 +1055,29 @@
   },
   {
     "type": "function",
-    "name": "timelockExpiry",
+    "name": "setUniversalRouter",
     "inputs": [
       {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "name": "router_",
+        "type": "address",
+        "internalType": "address"
       }
     ],
-    "outputs": [
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setVaultFactory",
+    "inputs": [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "vaultFactory_",
+        "type": "address",
+        "internalType": "address"
       }
     ],
-    "stateMutability": "view"
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -1368,6 +1139,19 @@
   },
   {
     "type": "function",
+    "name": "universalRouter",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "unlockCallback",
     "inputs": [
       {
@@ -1418,19 +1202,6 @@
   },
   {
     "type": "function",
-    "name": "v4Permit2",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "v4PositionManager",
     "inputs": [],
     "outputs": [
@@ -1457,7 +1228,7 @@
   },
   {
     "type": "function",
-    "name": "weth",
+    "name": "vaultFactory",
     "inputs": [],
     "outputs": [
       {
@@ -1554,35 +1325,10 @@
         "internalType": "address"
       },
       {
-        "name": "permit2",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
         "name": "hook",
         "type": "address",
         "indexed": false,
         "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "ETHRescued",
-    "inputs": [
-      {
-        "name": "to",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -1683,25 +1429,6 @@
         "type": "uint64",
         "indexed": false,
         "internalType": "uint64"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "LockerUpdated",
-    "inputs": [
-      {
-        "name": "prev",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "next",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -1848,70 +1575,6 @@
   },
   {
     "type": "event",
-    "name": "SupplyBoundsUpdated",
-    "inputs": [
-      {
-        "name": "minSupply",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "maxSupply",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "TimelockCancelled",
-    "inputs": [
-      {
-        "name": "actionId",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "TimelockExecuted",
-    "inputs": [
-      {
-        "name": "actionId",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "TimelockQueued",
-    "inputs": [
-      {
-        "name": "actionId",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "executeAfter",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "TokenBought",
     "inputs": [
       {
@@ -1934,12 +1597,6 @@
       },
       {
         "name": "tokensOut",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "tokensToDead",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1989,18 +1646,6 @@
       },
       {
         "name": "migrationTarget",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "antibotEnabled",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      },
-      {
-        "name": "tradingBlock",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -2146,6 +1791,19 @@
   },
   {
     "type": "event",
+    "name": "UniversalRouterUpdated",
+    "inputs": [
+      {
+        "name": "router",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Upgraded",
     "inputs": [
       {
@@ -2156,6 +1814,11 @@
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "ActivePool",
+    "inputs": []
   },
   {
     "type": "error",
@@ -2175,7 +1838,7 @@
   },
   {
     "type": "error",
-    "name": "ApprovalFailed",
+    "name": "CloneFailed",
     "inputs": []
   },
   {
@@ -2211,6 +1874,11 @@
   },
   {
     "type": "error",
+    "name": "InsufficientContractBalance",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientCreationFee",
     "inputs": []
   },
@@ -2221,7 +1889,17 @@
   },
   {
     "type": "error",
+    "name": "InsufficientPoolQuote",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidAllocation",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidFeeSplitBps",
     "inputs": []
   },
   {
@@ -2241,7 +1919,23 @@
   },
   {
     "type": "error",
-    "name": "InvalidSupply",
+    "name": "InvalidSupplyTier",
+    "inputs": [
+      {
+        "name": "tier",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidVaultBps",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "LiquidityReserveViolation",
     "inputs": []
   },
   {
@@ -2261,12 +1955,28 @@
   },
   {
     "type": "error",
-    "name": "NativeQuoteNoSwapNeeded",
+    "name": "NativeQuoteUnsupported",
     "inputs": []
   },
   {
     "type": "error",
     "name": "NativeTransferFailed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotArcChain",
+    "inputs": [
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotCreator",
     "inputs": []
   },
   {
@@ -2308,11 +2018,6 @@
   },
   {
     "type": "error",
-    "name": "PendingValueMismatch",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "QuoteTokenNotAllowed",
     "inputs": []
   },
@@ -2328,12 +2033,17 @@
   },
   {
     "type": "error",
-    "name": "TimelockNotExpired",
+    "name": "SlippageTooFewTokens",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "TimelockNotQueued",
+    "name": "SlippageTooLittleQuote",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TooManyFeeSplits",
     "inputs": []
   },
   {
@@ -2365,6 +2075,11 @@
   {
     "type": "error",
     "name": "UnknownToken",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "VanityAddressRequired",
     "inputs": []
   },
   {

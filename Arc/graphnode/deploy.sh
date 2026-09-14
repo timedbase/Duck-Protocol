@@ -1,27 +1,28 @@
 #!/usr/bin/env bash
-# Goldsky does not support Arc mainnet (chain 5042) for subgraph indexing
-# yet -- confirmed by direct testing against their API, not just docs (they
-# only have arc-testnet, a different chain, ID 5042002). So this deploys to
-# our own self-hosted graph-node instead (see this directory's render.yaml,
-# duckfun-graph-node/-ipfs/-postgres services) rather than Goldsky.
+# Deploys the DuckProtocol Arc subgraph to the self-hosted graph-node (render.yaml in this directory).
+# Goldsky doesn't index Arc mainnet (5042). The graph-node admin API and IPFS are private Render services,
+# so tunnel to them first, each in its own terminal:
 #
-# graph-node's admin/IPFS ports are on Render's private network only (no
-# public internet access -- graph-node's admin API has no built-in auth, so
-# exposing it publicly would let anyone deploy/delete subgraphs on it). Reach
-# them from your own machine with the Render CLI's tunnel feature:
+#   render login
+#   render connect duckfun-graph-node     # forwards 8020 (admin) and 8000 (queries)
+#   render connect duckfun-graph-ipfs     # forwards 5001
 #
-#   render login                          # once
-#   render connect duckfun-graph-node     # keep running in another terminal;
-#                                          # prints the local ports it forwards
+# then, with the local ports those tunnels print:
 #
-# Then set GRAPH_NODE_ADMIN_URL/IPFS_URL below to whatever localhost ports
-# that tunnel printed (it forwards every port the service exposes, so both
-# graph-node's 8020 admin port and duckfun-graph-ipfs's 5001 need their own
-# `render connect` tunnel, or run two tunnels at once in separate terminals).
+#   GRAPH_NODE_ADMIN_URL=http://localhost:8020 IPFS_URL=http://localhost:5001 bash deploy.sh
 set -euo pipefail
+cd "$(dirname "$0")"
 
-GRAPH_NODE_ADMIN_URL="${GRAPH_NODE_ADMIN_URL:?Set to the tunneled graph-node admin URL, e.g. http://localhost:8020 (see this file's header)}"
-IPFS_URL="${IPFS_URL:?Set to the tunneled duckfun-graph-ipfs URL, e.g. http://localhost:5001 (see this file's header)}"
+NAME=duckprotocol-arc
+GRAPH_NODE_ADMIN_URL="${GRAPH_NODE_ADMIN_URL:?set to the tunneled graph-node admin URL, e.g. http://localhost:8020}"
+IPFS_URL="${IPFS_URL:?set to the tunneled IPFS URL, e.g. http://localhost:5001}"
+VERSION=$(date +%Y.%m.%d%H%M%S)
 
-npx graph create --node "$GRAPH_NODE_ADMIN_URL" duckfun-arc
-npx graph deploy --node "$GRAPH_NODE_ADMIN_URL" --ipfs "$IPFS_URL" duckfun-arc --version-label "$(date +%Y.%m.%d%H%M%S)"
+npx graph codegen
+npx graph build
+# Registers the name on first deploy; on later deploys the name already exists and this is skipped.
+if ! out=$(npx graph create --node "$GRAPH_NODE_ADMIN_URL" "$NAME" 2>&1); then
+  echo "$out" | grep -qi "already exists" || { echo "$out"; exit 1; }
+fi
+npx graph deploy --node "$GRAPH_NODE_ADMIN_URL" --ipfs "$IPFS_URL" "$NAME" --version-label "$VERSION"
+echo "Deployed $NAME ($VERSION). Queries: http://duckfun-graph-node:8000/subgraphs/name/$NAME"

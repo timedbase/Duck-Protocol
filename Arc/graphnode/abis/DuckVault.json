@@ -19,114 +19,120 @@
   },
   {
     "type": "function",
-    "name": "VANITY_SUFFIX",
+    "name": "addCollateral",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "borrow",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "borrowIndex",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "uint16",
-        "internalType": "uint16"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "acceptOwnership",
+    "name": "config",
     "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "addDex",
-    "inputs": [
-      {
-        "name": "positionManager_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "singleton_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "hook_",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "addQuoteToken",
-    "inputs": [
-      {
-        "name": "token_",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "dexes",
-    "inputs": [
+    "outputs": [
       {
         "name": "",
         "type": "address",
         "internalType": "address"
       }
     ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "creator",
+    "inputs": [],
     "outputs": [
       {
-        "name": "singleton",
+        "name": "",
         "type": "address",
         "internalType": "address"
-      },
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "currency",
+    "inputs": [],
+    "outputs": [
       {
-        "name": "hook",
+        "name": "",
         "type": "address",
         "internalType": "address"
-      },
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "currencyDecimals",
+    "inputs": [],
+    "outputs": [
       {
-        "name": "enabled",
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "depositFees",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "enabled",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
         "type": "bool",
         "internalType": "bool"
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "disableDex",
-    "inputs": [
-      {
-        "name": "positionManager_",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "disableQuoteToken",
-    "inputs": [
-      {
-        "name": "token_",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -201,68 +207,96 @@
   },
   {
     "type": "function",
-    "name": "initialize",
-    "inputs": [
+    "name": "factory",
+    "inputs": [],
+    "outputs": [
       {
-        "name": "tokenImpl_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "platformWallet_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "initialPositionMgr_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "initialSingleton_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "initialHook_",
+        "name": "",
         "type": "address",
         "internalType": "address"
       }
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "instantBuy",
-    "inputs": [
+    "name": "family",
+    "inputs": [],
+    "outputs": [
       {
-        "name": "quoteToken_",
+        "name": "",
         "type": "address",
         "internalType": "address"
-      },
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "governor",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "healthFactorBps",
+    "inputs": [
+      {
+        "name": "borrower",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "hook",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
       {
         "name": "token_",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "extraEth_",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "tokenDecimals_",
+        "type": "uint8",
+        "internalType": "uint8"
       },
       {
-        "name": "minQuoteOut_",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "creator_",
+        "type": "address",
+        "internalType": "address"
       },
       {
-        "name": "minTokensOut_",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "singleton_",
+        "name": "config_",
         "type": "address",
         "internalType": "address"
       },
@@ -272,129 +306,116 @@
         "internalType": "address"
       },
       {
-        "name": "recipient_",
+        "name": "family_",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [],
-    "stateMutability": "payable"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
-    "name": "launch",
-    "inputs": [
-      {
-        "name": "p",
-        "type": "tuple",
-        "internalType": "struct DuckLauncher.LaunchParams",
-        "components": [
-          {
-            "name": "name",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "symbol",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "metaURI",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "feeWallet",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "positionManager",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "quoteToken",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "vanitySalt",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "supplyTier",
-            "type": "uint8",
-            "internalType": "uint8"
-          },
-          {
-            "name": "launchMarketCap",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "minQuoteOut",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "minTokensOut",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "hookFeeBps",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "creatorBps",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "vaultBps",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "burnBps",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "revertOnInstantBuyFailure",
-            "type": "bool",
-            "internalType": "bool"
-          }
-        ]
-      }
-    ],
-    "outputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "poolId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "payable"
-  },
-  {
-    "type": "function",
-    "name": "launchFee",
+    "name": "lastAccrual",
     "inputs": [],
     "outputs": [
       {
         "name": "",
+        "type": "uint40",
+        "internalType": "uint40"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "linkPool",
+    "inputs": [
+      {
+        "name": "currency_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "poolId_",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "tokenIsCurrency0_",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "currencyDecimals_",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "liquidate",
+    "inputs": [
+      {
+        "name": "borrower",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "repayAmount",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "loans",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "collateral",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "principal",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "indexSnap",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "openedAt",
+        "type": "uint40",
+        "internalType": "uint40"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "manager",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -472,52 +493,39 @@
   },
   {
     "type": "function",
-    "name": "owner",
+    "name": "pendingBuyback",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "address",
-        "internalType": "address"
+        "type": "uint128",
+        "internalType": "uint128"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "pendingOwner",
+    "name": "poolId",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "address",
-        "internalType": "address"
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "platformToken",
+    "name": "poolLinkedAt",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "platformWallet",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
+        "type": "uint40",
+        "internalType": "uint40"
       }
     ],
     "stateMutability": "view"
@@ -537,46 +545,10 @@
   },
   {
     "type": "function",
-    "name": "quoteTokens",
+    "name": "repay",
     "inputs": [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "renounceOwnership",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "rescueERC20",
-    "inputs": [
-      {
-        "name": "token_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "to_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "amount_",
+        "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -625,23 +597,10 @@
   },
   {
     "type": "function",
-    "name": "setLaunchFee",
+    "name": "setCreator",
     "inputs": [
       {
-        "name": "fee_",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setPlatformToken",
-    "inputs": [
-      {
-        "name": "token",
+        "name": "newCreator",
         "type": "address",
         "internalType": "address"
       }
@@ -651,10 +610,10 @@
   },
   {
     "type": "function",
-    "name": "setPlatformWallet",
+    "name": "setGovernor",
     "inputs": [
       {
-        "name": "wallet",
+        "name": "governor_",
         "type": "address",
         "internalType": "address"
       }
@@ -664,86 +623,7 @@
   },
   {
     "type": "function",
-    "name": "setRoutes",
-    "inputs": [
-      {
-        "name": "quoteToken_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "routes_",
-        "type": "tuple[]",
-        "internalType": "struct Route[]",
-        "components": [
-          {
-            "name": "enabled",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "hook",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "fee",
-            "type": "uint24",
-            "internalType": "uint24"
-          },
-          {
-            "name": "tickSpacing",
-            "type": "int24",
-            "internalType": "int24"
-          }
-        ]
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setTokenImpl",
-    "inputs": [
-      {
-        "name": "tokenImpl_",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setUniversalRouter",
-    "inputs": [
-      {
-        "name": "router_",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setVaultFactory",
-    "inputs": [
-      {
-        "name": "vaultFactory_",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "tokenImpl",
+    "name": "token",
     "inputs": [],
     "outputs": [
       {
@@ -756,15 +636,80 @@
   },
   {
     "type": "function",
-    "name": "transferOwnership",
-    "inputs": [
+    "name": "tokenDecimals",
+    "inputs": [],
+    "outputs": [
       {
-        "name": "newOwner",
-        "type": "address",
-        "internalType": "address"
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
-    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "tokenIsCurrency0",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "totalBorrows",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "totalCollateral",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "totalReserves",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "triggerBuyback",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "burned",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable"
   },
   {
@@ -819,67 +764,41 @@
   },
   {
     "type": "function",
-    "name": "vaultFactory",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "event",
-    "name": "DexAdded",
+    "name": "withdraw",
     "inputs": [
       {
-        "name": "positionManager",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "singleton",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
-        "name": "hook",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "DexDisabled",
-    "inputs": [
-      {
-        "name": "positionManager",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "ERC20Rescued",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "to",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "withdrawCollateral",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "BadDebtRealized",
+    "inputs": [
+      {
+        "name": "borrower",
         "type": "address",
         "indexed": true,
         "internalType": "address"
@@ -889,6 +808,159 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Borrowed",
+    "inputs": [
+      {
+        "name": "borrower",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "newDebt",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "BuybackExecuted",
+    "inputs": [
+      {
+        "name": "currencyIn",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "tokensBurned",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "BuybackQueued",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "CollateralAdded",
+    "inputs": [
+      {
+        "name": "borrower",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "CollateralWithdrawn",
+    "inputs": [
+      {
+        "name": "borrower",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "CreatorSet",
+    "inputs": [
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Deposited",
+    "inputs": [
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Enabled",
+    "inputs": [
+      {
+        "name": "enabled",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "GovernorSet",
+    "inputs": [
+      {
+        "name": "governor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -908,16 +980,28 @@
   },
   {
     "type": "event",
-    "name": "InstantBuySkipped",
+    "name": "Liquidated",
     "inputs": [
       {
-        "name": "token",
+        "name": "borrower",
         "type": "address",
         "indexed": true,
         "internalType": "address"
       },
       {
-        "name": "refundedWei",
+        "name": "liquidator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "repaid",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "seized",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -927,103 +1011,44 @@
   },
   {
     "type": "event",
-    "name": "LaunchFeeSet",
+    "name": "PoolLinked",
     "inputs": [
       {
-        "name": "fee",
+        "name": "currency",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "poolId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Repaid",
+    "inputs": [
+      {
+        "name": "borrower",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "OwnershipTransferStarted",
-    "inputs": [
-      {
-        "name": "previousOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
       },
       {
-        "name": "newOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "OwnershipTransferred",
-    "inputs": [
-      {
-        "name": "previousOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "newOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "PlatformTokenSet",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "PlatformWalletSet",
-    "inputs": [
-      {
-        "name": "wallet",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "QuoteTokenAdded",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "QuoteTokenDisabled",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        "name": "remainingDebt",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -1074,62 +1099,6 @@
   },
   {
     "type": "event",
-    "name": "TokenImplSet",
-    "inputs": [
-      {
-        "name": "tokenImpl",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "TokenLaunched",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "creator",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "positionManager",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "quoteToken",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
-        "name": "hook",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
-        "name": "poolId",
-        "type": "bytes32",
-        "indexed": false,
-        "internalType": "bytes32"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "UniversalRouterUpdated",
     "inputs": [
       {
@@ -1156,13 +1125,19 @@
   },
   {
     "type": "event",
-    "name": "VaultFactorySet",
+    "name": "Withdrawn",
     "inputs": [
       {
-        "name": "vaultFactory",
+        "name": "to",
         "type": "address",
         "indexed": true,
         "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -1180,7 +1155,12 @@
   },
   {
     "type": "error",
-    "name": "CloneFailed",
+    "name": "AlreadyLinked",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BelowMinLoan",
     "inputs": []
   },
   {
@@ -1201,17 +1181,47 @@
   },
   {
     "type": "error",
+    "name": "ExceedsBorrowerShare",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ExceedsCirculatingShare",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ExceedsMaxLtv",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ExceedsPoolDepthShare",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "FailedCall",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "HookRequired",
+    "name": "GovernorAlreadySet",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "InstantBuyFailed",
+    "name": "ImplementationNotApproved",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientCollateral",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientLiquidity",
     "inputs": []
   },
   {
@@ -1221,38 +1231,22 @@
   },
   {
     "type": "error",
-    "name": "InvalidHookFeeBps",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "InvalidInitialization",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "InvalidSupplyTier",
-    "inputs": [
-      {
-        "name": "tier",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "InvalidTickRange",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "InvalidVaultBps",
+    "name": "MarketDisabled",
     "inputs": []
   },
   {
     "type": "error",
     "name": "NativeQuoteUnsupported",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoDebt",
     "inputs": []
   },
   {
@@ -1268,40 +1262,64 @@
   },
   {
     "type": "error",
+    "name": "NotGovernor",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotInitializing",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "OwnableInvalidOwner",
-    "inputs": [
-      {
-        "name": "owner",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "OwnableUnauthorizedAccount",
-    "inputs": [
-      {
-        "name": "account",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "PoolAlreadyExists",
+    "name": "NotLiquidatable",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "ReentrancyGuardReentrantCall",
+    "name": "NotManager",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotTrustedCaller",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OracleUnavailable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PoolDepthUnavailable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PoolTooYoung",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Reentrant",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SafeCastOverflowedUintDowncast",
+    "inputs": [
+      {
+        "name": "bits",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -1331,22 +1349,7 @@
   },
   {
     "type": "error",
-    "name": "UnsupportedDex",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "UnsupportedQuoteToken",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "VanityAddressRequired",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "WrongFee",
+    "name": "UtilizationTooHigh",
     "inputs": []
   },
   {
@@ -1357,6 +1360,11 @@
   {
     "type": "error",
     "name": "ZeroAmount",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroPrice",
     "inputs": []
   }
 ]

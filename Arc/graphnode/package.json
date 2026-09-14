@@ -1,6 +1,6 @@
 {
-  "name": "duckfun-subgraph-arc",
-  "version": "0.1.0",
+  "name": "duckprotocol-arc",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "codegen": "graph codegen",

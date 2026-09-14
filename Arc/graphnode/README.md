@@ -1,120 +1,50 @@
-# duckfun.family subgraph — Arc
+# DuckProtocol subgraph — Arc
 
-> Copied into `DuckProtocol/Arc/graphnode` from the workspace's `subgraph-arc`, together with the graph-node
-> services (`render.yaml` here). As copied, it still indexes the earlier Arc deployment described below
-> (Duck-Family-Contract: DuckIncubationArc, DuckLauncherArc, DuckRaiseArc, DuckLockerArc, DuckHookV4Arc). The
-> DuckProtocol Arc build in this repo (DuckBondingCurve, DuckLauncher, DuckCrowdfund, DuckGenesisHook, lending)
-> needs its own data sources, ABIs and mappings once it's deployed, under a new subgraph name so the live
-> `duckfun-arc` index isn't replaced.
+Subgraph for the DuckProtocol Arc build (`../`) on Arc mainnet (5042), deployed to the self-hosted
+graph-node described in `render.yaml` as `duckprotocol-arc`. Goldsky doesn't index Arc mainnet.
 
-Indexes activity across all three launcher families (`DuckIncubationArc`,
-`DuckLauncherArc`, `DuckRaiseArc`), the shared `DuckLockerArc` and
-`DuckHookV4Arc` (including `DuckLockerArc`'s V3-specific fee-claim/CTO flow —
-Ink has no equivalent), and raw Uniswap V4 `PoolManager` swap/liquidity
-activity for pools this platform created — on Arc chain (5042).
+It indexes the same entities, with the same handlers, as the Robinhood Chain and Ink subgraphs: the
+bonding curve, launcher and crowdfund, DuckGenesisHook and the PoolManager swaps in its pools, lending
+vaults and their factory/config, per-token governance, and each token's transfers and holder rewards.
+Every other admin event is stored as an `AdminEvent`.
 
-Addresses are pinned to the live deployment recorded in the
-[Duck-Family-Contract](https://github.com/timedbase/Duck-Family-Contract) repo's
-`deploy-arc/deployments/arc.json`.
+## Contracts
 
-## Why this isn't on Goldsky (unlike the Ink subgraph)
+| Data source | Address |
+|---|---|
+| DuckBondingCurve | `0xFD5FAE76B375e1dA6A3F1759eB84B26b39dE706C` |
+| DuckLauncher | `0xf916E628503639DCb4726d4B75745Ad678dc4d02` |
+| DuckCrowdfund | `0x0c8f0f1353f2d963D03C3eC558D20b151DaF7214` |
+| DuckVaultFactory | `0xE3D4d83307E6f5A2C7B4b85436eAacAfd1B873C3` |
+| DuckVaultConfig | `0xb0d1E41Af535a986e61A9ce39ea31e7ef65A4EE8` |
+| DuckTokenGovernorFactory | `0x3271b5e9F53E5096508519126528373Adc4e3Aec` |
+| DuckGenesisHook | `0x6A44E6a1dF1e4cC329Dda87389ecA12DA9422aCC` |
+| PoolManager (Uniswap v4) | `0x8366a39CC670B4001A1121B8F6A443A643e40951` |
 
-Goldsky does not support Arc mainnet (chain 5042) for subgraph indexing —
-confirmed by directly testing `goldsky subgraph deploy` against their API
-(not just reading docs, which are themselves inconsistent on this point).
-Every plausible network slug (`arc`, `arc-mainnet`, `arc_mainnet`,
-`circle-arc`, `arc1`, `arc-1`, `arcmainnet`) was rejected with `Subgraph
-network not supported`. Goldsky's own docs confirm only `arc-testnet` (a
-**different chain**, ID 5042002) exists on their platform today.
+All start at block 20792816. `DuckToken` (the three token templates), `DuckVault`,
+`DuckTokenGovernor` and `TimelockControllerUpgradeable` are templates created as they appear.
 
-So this subgraph runs on a self-hosted `graph-node` instead — see
-`render.yaml` in this directory (`duckfun-graph-postgres`,
-`duckfun-graph-ipfs`, `duckfun-graph-node`), three private services mirroring
-graph-node's own reference
-[docker-compose.yml](https://github.com/graphprotocol/graph-node/blob/master/docker/docker-compose.yml)
-exactly. Revisit Goldsky once/if they add real Arc mainnet support — nothing
-about the subgraph code itself is Goldsky-specific.
+## USD pricing on Arc
 
-## What's indexed
+USDC is Arc's native gas token and the ERC-20 at `0x3600000000000000000000000000000000000000` is the same balance, so both count as
+exactly $1 and every USDC-quoted trade is priced directly. There is no ETH reference: a quote token
+other than USDC gets a price discovered from its deepest Uniswap v3 pool against USDC (factory
+`0xf0db7b58379503491d857db50ac9ece64c653918`) or v4 pool against native USDC, marked `origin: DISCOVERED`.
 
-Same shape as the Ink subgraph, plus DuckLockerArc's V3 flow:
+## Deploy
 
-- **Token lifecycle** — creation/launch (`Token`), bonding-curve buys/sells
-  (`Trade`), migration (`Migration`), curve-fee claims (`CurveFeeClaim`).
-- **Crowdfunding** — `Campaign` + `Contribution`.
-- **LP position / hook (V4)** — `Position` + `LPFeeClaim`, `Pool` +
-  `HookFeeClaim` + `CTOApplication`.
-- **LP position / locker (V3-only, Arc-specific)** — the same `Position`
-  entity (`isV3: true`, `creator` set directly since V3 has no hook to look
-  it up from) and `LPFeeClaim` (`toCreator` populated, unlike a V4 claim) for
-  fee collection, plus a separate `V3CTOApplication` entity for the
-  locker-hosted CTO flow (`applyForCTOV3`/`approveCTOV3`/`rejectCTOV3` on
-  DuckLockerArc — V3 has no hook to host this on, unlike V4's `CTOApplication`
-  keyed by `Pool`).
-- **Raw pool activity (V4 only)** — `PoolSwap`/`PoolLiquidityChange` off the
-  real Uniswap V4 `PoolManager` singleton, filtered to this platform's pools.
-  No V3 equivalent is indexed — V3 pools are per-pair standalone contracts
-  with no shared emitter to watch generically; DuckLockerArc's own
-  `FeesClaimedV3`/`PositionRegistered` already cover what this platform needs.
-- **Holder balances** — `Holder`, via a per-token `Transfer` template.
-
-## What's different from the Ink subgraph (beyond V3)
-
-- **No `ReferencePrice` entity / no ETH-USD tracking.** Arc has no WETH —
-  native currency here already IS USDC (18-decimal), pegged 1:1 to USD, so
-  `lib.ts` resolves it directly with no live reference-price pool to watch
-  at all (Ink needs one because ETH itself has no fixed USD peg).
-- **No `DuckMetaOverride` data source.** That registry hasn't been deployed
-  on Arc yet (a separate script, not run as part of the initial Arc
-  contract deploy) — add it back here if/when it is.
-- **No default quote-token seeding.** Arc's contracts don't seed any quote
-  tokens on deploy (see the contracts repo's notes) — until real ones are
-  added via `setQuoteTokenAllowed`/`setRoutes`, only native-currency trades
-  will resolve a USD price.
-
-## Local build
-
-```bash
+```
 npm install
-npm run codegen   # generates generated/ from subgraph.yaml + schema.graphql + abis/
-npm run build     # compiles the AssemblyScript mappings to build/*.wasm
+bash deploy.sh      # needs GRAPH_NODE_ADMIN_URL and IPFS_URL; see the header of deploy.sh
 ```
 
-Both run clean — zero codegen/compile errors.
+`deploy.sh` runs codegen and build, registers `duckprotocol-arc` on first use, and deploys a new
+version. Services on the same Render network query it at
+`http://duckfun-graph-node:8000/subgraphs/name/duckprotocol-arc`. The earlier `duckfun-arc` subgraph on
+that node (the previous Arc contracts) is left as it is.
 
-## Deploying to the self-hosted graph-node
+## Changing it
 
-The `duckfun-graph-node`/`duckfun-graph-ipfs` services are Render **private**
-services (no public internet access — graph-node's admin API has no built-in
-auth, so exposing it publicly would let anyone deploy/delete subgraphs on
-it). Reach them from your own machine with the Render CLI's tunnel feature:
-
-```bash
-render login                          # once, opens a browser to authenticate
-render connect duckfun-graph-node     # keep running in one terminal
-render connect duckfun-graph-ipfs     # keep running in another terminal
-```
-
-Each prints the local port it's forwarding. Then, in a third terminal:
-
-```bash
-cd Arc/graphnode
-GRAPH_NODE_ADMIN_URL=http://localhost:<forwarded graph-node port> \
-IPFS_URL=http://localhost:<forwarded ipfs port> \
-  bash deploy.sh
-```
-
-`deploy.sh` runs `graph create` (once) then `graph deploy` (every time,
-always under the same subgraph name `duckfun-arc` with an auto-generated
-version label) — check its header comment for the full explanation.
-
-Once deployed, the backend and anything else on Render's private network
-reaches its GraphQL endpoint at `http://duckfun-graph-node:8000/subgraphs/name/duckfun-arc`
-(the API's `ARC_SUBGRAPH_URL` in the workspace-root `render.yaml`) — no tunnel needed for that, since
-it's server-to-server on the same private network.
-
-## Schema conventions
-
-Same as the Ink subgraph (see its README) — token/position/pool keyed
-directly by address/poolId, not back-referenced from `Token`, everything
-else event-shaped (`txHash-logIndex`).
+Everything here except `render.yaml` and this generator is generated. Edit the shared generator
+(`DuckProtocol-HQ/subgraph/gen_subgraphs.py`) or `gen_subgraph_arc.py`, then run
+`python3 gen_subgraph_arc.py`.
