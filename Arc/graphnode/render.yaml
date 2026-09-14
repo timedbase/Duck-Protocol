@@ -1,8 +1,8 @@
-# Self-hosted graph-node for Arc (5042), as a Render Blueprint: the same three private services the
-# workspace-root render.yaml runs today (duckfun-graph-postgres, duckfun-graph-ipfs, duckfun-graph-node).
-# Render reads a Blueprint from the repo root by default; to use this one, set the Blueprint file path to
-# Arc/graphnode/render.yaml. Synced into the Render project that already runs these services, it manages
-# those same services by name -- rename them here to stand up a second node instead.
+# Self-hosted graph-node for the DuckProtocol Arc (5042) subgraph: three private services in the Render
+# workspace, created through the Render API on 2026-09-14 with these settings (duckprotocol-arc-graph-*).
+# The earlier Arc node (duckprotocol-arc-graph-*) is a separate, suspended set. Render reads a Blueprint from the repo
+# root by default; to manage these services from this file, set the Blueprint file path to
+# Arc/graphnode/render.yaml. Secrets (the postgres credentials) are sync:false and set on the services.
 services:
   # ---- Self-hosted subgraph indexing for Arc (Goldsky doesn't support it
   # yet) -- mirrors graph-node's own reference docker-compose.yml exactly
@@ -16,18 +16,18 @@ services:
   # offering doesn't expose a locale option, and getting this wrong doesn't
   # fail loudly, it silently produces wrong query results in some cases.
   - type: pserv
-    name: duckfun-graph-postgres
+    name: duckprotocol-arc-graph-postgres
     runtime: image
     plan: starter
     image:
       url: postgres:16
     disk:
-      name: duckfun-graph-postgres-data
+      name: duckprotocol-arc-graph-postgres-data
       mountPath: /var/lib/postgresql/data
       sizeGB: 10
     envVars:
       # Must match postgres_user/postgres_pass/postgres_db on
-      # duckfun-graph-node below exactly -- Render prompts for each
+      # duckprotocol-arc-graph-node below exactly -- Render prompts for each
       # sync:false var once per service during Blueprint setup, so these
       # don't auto-share a value the way an env var group would.
       - key: POSTGRES_USER
@@ -36,35 +36,36 @@ services:
         sync: false
       - key: POSTGRES_DB
         sync: false
+      # A subdirectory of the disk mount: postgres won't initialize into a directory holding lost+found.
       - key: PGDATA
-        value: /var/lib/postgresql/data
+        value: /var/lib/postgresql/data/pgdata
       - key: POSTGRES_INITDB_ARGS
         value: "-E UTF8 --locale=C"
 
   - type: pserv
-    name: duckfun-graph-ipfs
+    name: duckprotocol-arc-graph-ipfs
     runtime: image
     plan: starter
     image:
       url: ipfs/kubo:latest
     disk:
-      name: duckfun-graph-ipfs-data
+      name: duckprotocol-arc-graph-ipfs-data
       mountPath: /data/ipfs
       sizeGB: 10
 
   - type: pserv
-    name: duckfun-graph-node
+    name: duckprotocol-arc-graph-node
     runtime: image
     plan: standard
     image:
       url: graphprotocol/graph-node:latest
     envVars:
       - key: postgres_host
-        value: duckfun-graph-postgres
+        value: duckprotocol-arc-graph-postgres
       - key: postgres_port
         value: "5432"
       # Must match POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB on
-      # duckfun-graph-postgres above exactly.
+      # duckprotocol-arc-graph-postgres above exactly.
       - key: postgres_user
         sync: false
       - key: postgres_pass
@@ -72,7 +73,7 @@ services:
       - key: postgres_db
         sync: false
       - key: ipfs
-        value: duckfun-graph-ipfs:5001
+        value: duckprotocol-arc-graph-ipfs:5001
       # Network name here MUST match graphnode/subgraph.yaml's every
       # `network:` field exactly (currently "arc") -- graph-node routes a
       # subgraph's data source to whichever `ethereum` entry has the

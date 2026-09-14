@@ -39,9 +39,10 @@ bash deploy.sh      # needs GRAPH_NODE_ADMIN_URL and IPFS_URL; see the header of
 ```
 
 `deploy.sh` runs codegen and build, registers `duckprotocol-arc` on first use, and deploys a new
-version. Services on the same Render network query it at
-`http://duckfun-graph-node:8000/subgraphs/name/duckprotocol-arc`. The earlier `duckfun-arc` subgraph on
-that node (the previous Arc contracts) is left as it is.
+version. It runs inside the Render workspace (see its header), since the graph-node is private. Services
+on the same Render network query it at
+`http://duckprotocol-arc-graph-node:8000/subgraphs/name/duckprotocol-arc`. The earlier graph node for the
+previous Arc contracts (`duckfun-graph-*`, suspended) is separate and untouched.
 
 ## Changing it
 
