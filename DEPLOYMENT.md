@@ -6,6 +6,11 @@ Deployed 2026-09-12. Every contract except `DuckHookV4` is deployed via CREATE2 
 named salts, so **all addresses are identical across both chains except the hook** — its
 constructor embeds the chain's PoolManager, so its address can never match across chains.
 
+> Proxy addresses below are original and unchanged since 2026-09-12; implementation and clone
+> template addresses were last updated 2026-09-16 (reward-config-fix upgrade — see memory
+> `reward-config-fix-upgrade`). This file predates Arc (5042); Arc's addresses and the live,
+> per-chain address tables are in `docs/content.js`.
+
 | Role | Address |
 |---|---|
 | Owner of all governance-controlled contracts | `0xac3dc1c78Ab23161B6C5029E9638A6ceB1129ba7` |
@@ -28,14 +33,17 @@ constructor embeds the chain's PoolManager, so its address can never match acros
 | DuckHookFactory | `0x66080d1fD50779A1Bc663472571deFACa24B73Ba` |
 | DuckVaultFactory — impl | `0xC2ad69a1FadFcBDF085cD50814B2074CDeC95dB9` |
 | DuckVaultFactory — **proxy** | `0x006e53d079BB4c2010682a4896D1950965faD5A5` |
-| DuckToken — impl (clone target) | `0x83A491C728b0485A887fE9D7360C4Ae7eF8B1461` |
-| DuckBondingCurve — impl | `0x86E32BEa7ECb4f30ec395faF137E05eD880AfBa1` |
+| DuckToken — impl (legacy clone target, locked curve tokens only) | `0x83A491C728b0485A887fE9D7360C4Ae7eF8B1461` |
+| DuckBondingCurve — impl | `0xb481A099e0Fe19984141C686Ad3e5304278E03cE` |
 | DuckBondingCurve — **proxy** | `0xcE71ce995C2A3657aF9bEC45bA1Ee2E8fA2ef5eF` |
 | DuckBondingCurveViews | `0x6CD84C6e3dA0295b4A2787f1794a908A26FE8Ba1` |
-| DuckLauncher — impl | `0xBAcAABBdE0096b2722Fa2803b746AC53d2bD16c5` |
+| DuckLauncher — impl | `0x3c2c55607761859e1905716a4f74ff1892F03799` |
 | DuckLauncher — **proxy** | `0x5F37c68f9937A0524Cc441b4E1080Ca4F089693B` |
-| DuckCrowdfund — impl | `0x76433Fd870eA1518b7e2Ca2DD887469A091B80Cd` |
+| DuckCrowdfund — impl | `0x36346594624aC33be21330E8C984d469b8c1F7Af` |
 | DuckCrowdfund — **proxy** | `0xdA868A545aB058D14a70C46CA7760226e7Dcf7b9` |
+| DuckCurveToken — impl (clone target) | `0xf001D891e6B3f6958827c2CDF96656Cf9b2B228a` |
+| DuckLauncherToken — impl (clone target) | `0xE0499Bbbb71b5013d60e58097d2c92A5e594a55F` |
+| DuckCrowdfundToken — impl (clone target) | `0xb20E5FfFD3Fe31523234B23d400D9F103710b080` |
 | DuckTokenGovernor — impl | `0x2f87cDd103FE4E50132EA629c9693BCa5d70a2b2` |
 | TimelockController — impl | `0x68Df3b99C70E99621f38a0A90Fc1c2013a3f8Ade` |
 | DuckTokenGovernorFactory — impl | `0xC238bF5628d5b02a4F06769eC3A04b82e5c153D0` |
