@@ -4,7 +4,7 @@ pragma solidity ^0.8.32;
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {DuckBondingCurve} from "duck-bonding-curve/DuckBondingCurve.sol";
-import {DuckToken} from "duck-lib/DuckToken.sol";
+import {DuckCurveToken} from "duck-lib/DuckCurveToken.sol";
 import {DuckBondingCurveViews} from "duck-bonding-curve/DuckBondingCurveViews.sol";
 import {TokenConfig} from "duck-lib/DuckTypes.sol";
 import {SupplyTiers} from "duck-lib/SupplyTiers.sol";
@@ -12,7 +12,7 @@ import {SupplyTiers} from "duck-lib/SupplyTiers.sol";
 contract DuckBondingCurveViewsTest is Test {
     DuckBondingCurve curve;
     DuckBondingCurveViews views_;
-    DuckToken tokenImpl;
+    DuckCurveToken tokenImpl;
 
     address owner = makeAddr("owner");
     address platformWallet = makeAddr("platform");
@@ -20,15 +20,18 @@ contract DuckBondingCurveViewsTest is Test {
     address dummyWeth = makeAddr("weth");
     address dummyV4PM = makeAddr("v4pm");
     address dummyV4Singleton = makeAddr("v4singleton");
+    // DuckOpenToken.initToken now requires a real (non-zero) hook/poolManager at mint time -- reward
+    // config is set there now, not through a later setRewardConfig call (see its own comment).
+    address dummyV4Hook = makeAddr("v4hook");
 
     function setUp() public {
         vm.startPrank(owner);
-        tokenImpl = new DuckToken(address(0));
+        tokenImpl = new DuckCurveToken(address(0));
         DuckBondingCurve impl = new DuckBondingCurve();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
             abi.encodeCall(DuckBondingCurve.initialize, (
-                dummyWeth, dummyV4PM, dummyV4Singleton, address(0),
+                dummyWeth, dummyV4PM, dummyV4Singleton, dummyV4Hook,
                 platformWallet, address(tokenImpl)
             ))
         );
@@ -131,7 +134,7 @@ contract DuckBondingCurveViewsTest is Test {
 
         TokenConfig memory tc = curve.getTokenConfig(token);
         assertEq(tc.totalSupply, 100_000_000_000_000e18, "tier 3 must resolve to 100T on the real TokenConfig");
-        assertEq(DuckToken(payable(token)).totalSupply(), 100_000_000_000_000e18, "the real deployed token's own totalSupply must match too");
+        assertEq(DuckCurveToken(payable(token)).totalSupply(), 100_000_000_000_000e18, "the real deployed token's own totalSupply must match too");
     }
 
     function test_InvalidSupplyTierReverts() public {

@@ -16,7 +16,7 @@ pragma solidity ^0.8.32;
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {DuckBondingCurve} from "duck-bonding-curve/DuckBondingCurve.sol";
-import {DuckToken} from "duck-lib/DuckToken.sol";
+import {DuckCurveToken} from "duck-lib/DuckCurveToken.sol";
 import {Route, RouteShape} from "duck-lib/LaunchRouting.sol";
 
 contract MockERC20UR {
@@ -206,7 +206,7 @@ contract MockUniversalRouterUR {
 
 contract DuckBondingCurveUniversalRouterTest is Test {
     DuckBondingCurve curve;
-    DuckToken tokenImpl;
+    DuckCurveToken tokenImpl;
     MockERC20UR quoteToken;
     MockUniversalRouterUR router;
 
@@ -218,17 +218,21 @@ contract DuckBondingCurveUniversalRouterTest is Test {
     address dummyWeth = makeAddr("weth");
     address dummyV4PM = makeAddr("v4pm");
     address dummyV4Singleton = makeAddr("v4singleton");
+    // Unused by this test's own swap-routing assertions, but DuckOpenToken.initToken now requires a
+    // real (non-zero) hook/poolManager at mint time -- see its own comment on why: reward config is
+    // set there now, not through a later setRewardConfig call.
+    address dummyV4Hook = makeAddr("v4hook");
 
     function setUp() public {
         vm.etch(PERMIT2, address(new MockPermit2UR()).code);
 
         vm.startPrank(owner);
-        tokenImpl = new DuckToken(address(0));
+        tokenImpl = new DuckCurveToken(address(0));
         DuckBondingCurve impl = new DuckBondingCurve();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
             abi.encodeCall(DuckBondingCurve.initialize, (
-                dummyWeth, dummyV4PM, dummyV4Singleton, address(0),
+                dummyWeth, dummyV4PM, dummyV4Singleton, dummyV4Hook,
                 platformWallet, address(tokenImpl)
             ))
         );
@@ -313,7 +317,7 @@ contract DuckBondingCurveUniversalRouterTest is Test {
         vm.prank(buyer);
         curve.buyWithNative{value: 1 ether}(token, 0.9 ether, 0, block.timestamp + 1 hours);
 
-        assertGt(DuckToken(payable(token)).balanceOf(buyer), 0, "buyer should have received launched tokens");
+        assertGt(DuckCurveToken(payable(token)).balanceOf(buyer), 0, "buyer should have received launched tokens");
     }
 
     function test_BuyWithNative_V4Route_DeliversQuoteAndBuysToken() public {
@@ -324,7 +328,7 @@ contract DuckBondingCurveUniversalRouterTest is Test {
         vm.prank(buyer);
         curve.buyWithNative{value: 1 ether}(token, 0.9 ether, 0, block.timestamp + 1 hours);
 
-        assertGt(DuckToken(payable(token)).balanceOf(buyer), 0, "buyer should have received launched tokens");
+        assertGt(DuckCurveToken(payable(token)).balanceOf(buyer), 0, "buyer should have received launched tokens");
     }
 
     function test_SellForNative_V3Route_PaysSellerNativeETH() public {
@@ -335,9 +339,9 @@ contract DuckBondingCurveUniversalRouterTest is Test {
         vm.prank(buyer);
         curve.buyWithNative{value: 1 ether}(token, 0.9 ether, 0, block.timestamp + 1 hours);
 
-        uint256 tokenBal = DuckToken(payable(token)).balanceOf(buyer);
+        uint256 tokenBal = DuckCurveToken(payable(token)).balanceOf(buyer);
         vm.startPrank(buyer);
-        DuckToken(payable(token)).approve(address(curve), tokenBal);
+        DuckCurveToken(payable(token)).approve(address(curve), tokenBal);
         uint256 nativeBefore = buyer.balance;
         curve.sellForNative(token, tokenBal, 0, 0, block.timestamp + 1 hours);
         vm.stopPrank();
@@ -353,9 +357,9 @@ contract DuckBondingCurveUniversalRouterTest is Test {
         vm.prank(buyer);
         curve.buyWithNative{value: 1 ether}(token, 0.9 ether, 0, block.timestamp + 1 hours);
 
-        uint256 tokenBal = DuckToken(payable(token)).balanceOf(buyer);
+        uint256 tokenBal = DuckCurveToken(payable(token)).balanceOf(buyer);
         vm.startPrank(buyer);
-        DuckToken(payable(token)).approve(address(curve), tokenBal);
+        DuckCurveToken(payable(token)).approve(address(curve), tokenBal);
         uint256 nativeBefore = buyer.balance;
         curve.sellForNative(token, tokenBal, 0, 0, block.timestamp + 1 hours);
         vm.stopPrank();
@@ -370,7 +374,7 @@ contract DuckBondingCurveUniversalRouterTest is Test {
         ERC1967Proxy proxy2 = new ERC1967Proxy(
             address(impl2),
             abi.encodeCall(DuckBondingCurve.initialize, (
-                dummyWeth, dummyV4PM, dummyV4Singleton, address(0),
+                dummyWeth, dummyV4PM, dummyV4Singleton, dummyV4Hook,
                 platformWallet, address(tokenImpl)
             ))
         );

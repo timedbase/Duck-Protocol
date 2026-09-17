@@ -28,7 +28,8 @@ interface IDuckVaultFactoryLocal {
 interface ITokenInit {
     function initToken(
         string memory name_, string memory symbol_, uint256 totalSupply_,
-        bool lockUntilUnlock_, string memory metaURI_
+        bool lockUntilUnlock_, string memory metaURI_,
+        address hook_, address currency_, address poolManager_
     ) external;
 }
 
@@ -242,7 +243,16 @@ contract DuckBondingCurve is Initializable, UUPSUpgradeable, Ownable2StepUpgrade
 
         // No launch-phase lock: DuckGenesisHook only initializes pools this contract registers, at migration,
         // so a freely transferable token can't be used to seed or front-run its pool.
-        ITokenInit(token).initToken(p.name, p.symbol, a.supply, false, p.metaURI);
+        //
+        // Reward config is set here too, at creation, using this contract's CURRENT dex config and the
+        // pool's real quote currency -- WETH when the launch's own quote is native, since that's what
+        // migration always wraps it into (see BondingCurveMigration._mintV4). Computed the same way
+        // here as there so the two can never disagree the way they used to (see BondingCurveMigration's
+        // own comment on the bug this replaced). Accepted tradeoff: a token that migrates after a later
+        // setDexConfig call keeps the hook/poolManager that were current at its creation, not whatever
+        // it actually migrates onto.
+        address rewardCurrency_ = p.quoteToken == address(0) ? weth : p.quoteToken;
+        ITokenInit(token).initToken(p.name, p.symbol, a.supply, false, p.metaURI, v4Hook, rewardCurrency_, v4Singleton);
         _registerToken(token, msg.sender, p.quoteToken, a, vQuote, migTarget, p.hookFeeBps, p.creatorBps, p.vaultBps, p.burnBps);
         emit TokenCreated(token, msg.sender, p.quoteToken, a.supply, vQuote, migTarget);
 

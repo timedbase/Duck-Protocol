@@ -14,9 +14,11 @@ import {V4Minting} from "duck-lib/V4Minting.sol";
 import {SupplyTiers} from "duck-lib/SupplyTiers.sol";
 
 interface IDuckLauncherToken {
-    function initToken(string calldata name_, string calldata symbol_, uint256 totalSupply_, bool lockUntilUnlock_, string calldata metaURI_) external;
+    function initToken(
+        string calldata name_, string calldata symbol_, uint256 totalSupply_, bool lockUntilUnlock_, string calldata metaURI_,
+        address hook_, address currency_, address poolManager_
+    ) external;
     function renounceOwnership() external;
-    function setRewardConfig(address hook_, address currency_, address poolManager_) external;
 }
 
 interface IDuckVaultFactoryLocal {
@@ -246,27 +248,26 @@ contract DuckLauncher is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
     function launch(LaunchParams calldata p) external payable nonReentrant
         returns (address token, bytes32 poolId)
     {
+        DexConfig storage dex = dexes[p.positionManager];
+        if (!dex.enabled) revert UnsupportedDex();
+        if (dex.hook == address(0)) revert HookRequired();
+
         uint256 totalSupply = SupplyTiers.resolve(p.supplyTier);
-        token = _deployAndInit(p.name, p.symbol, p.metaURI, p.vanitySalt, totalSupply);
-        poolId = _setupAndRegister(token, p, totalSupply);
+        // Reward config is set in initToken itself now (hook/currency/poolManager), not through a
+        // later setRewardConfig call restricted to a separate mintManager address left alive
+        // indefinitely -- see DuckOpenToken.initToken's own comment on the "hidden owner" pattern that
+        // replaced. Launcher tokens have a real pool from block one (no migration delay), so there's
+        // no old-vs-new-template split to preserve here the way BondingCurveMigration still has to.
+        token = _deployAndInit(p.name, p.symbol, p.metaURI, p.vanitySalt, totalSupply, dex.hook, p.quoteToken, dex.singleton);
+        poolId = _setupAndRegister(token, p, totalSupply, dex);
     }
 
     function _setupAndRegister(
         address token,
         LaunchParams calldata p,
-        uint256 totalSupply
+        uint256 totalSupply,
+        DexConfig storage dex
     ) private returns (bytes32 poolId) {
-        DexConfig storage dex = dexes[p.positionManager];
-        if (!dex.enabled) revert UnsupportedDex();
-        if (dex.hook == address(0)) revert HookRequired();
-
-        // Must run BEFORE _mintV4 (and any instant-buy swap): minting the LP position is what first
-        // moves real balance into the PoolManager, and DuckToken only excludes poolManagerAddr once
-        // it's non-zero. Setting it first means that inbound transfer is recognized as the pool's own
-        // reserve rather than a new "holder". Launcher tokens have a pool from block one; curve and
-        // crowdfund wire this up at migration/success with the same before-the-mint ordering.
-        IDuckLauncherToken(token).setRewardConfig(dex.hook, p.quoteToken, dex.singleton);
-
         if (p.launchMarketCap == 0) revert ZeroAmount();
         bool feeWaived = platformToken != address(0) && p.quoteToken == platformToken;
         uint256 fee = feeWaived ? 0 : launchFee;
@@ -431,12 +432,15 @@ contract DuckLauncher is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         string calldata symbol_,
         string calldata metaURI_,
         bytes32         vanitySalt_,
-        uint256         totalSupply
+        uint256         totalSupply,
+        address         hook_,
+        address         currency_,
+        address         poolManager_
     ) private returns (address token) {
         bytes32 salt = keccak256(abi.encode(msg.sender, vanitySalt_));
         token = _clone(tokenImpl, salt);
         if (uint16(uint160(token)) != VANITY_SUFFIX) revert VanityAddressRequired();
-        IDuckLauncherToken(token).initToken(name_, symbol_, totalSupply, false, metaURI_);
+        IDuckLauncherToken(token).initToken(name_, symbol_, totalSupply, false, metaURI_, hook_, currency_, poolManager_);
     }
 
     function _computeSqrtPriceX96(address tokenAddr, address quoteToken_, uint256 launchMarketCap_, uint256 totalSupply)

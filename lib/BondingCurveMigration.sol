@@ -205,11 +205,20 @@ library BondingCurveMigration {
             ? (token_, quote_, liqTokens,       migrationAmount)
             : (quote_, token_, migrationAmount, liqTokens);
 
-        // Must run BEFORE _doMint: that's what first moves real balance into the PoolManager, and
-        // DuckToken only excludes poolManagerAddr once it's non-zero, so setting it first keeps that
-        // transfer from counting as a new "holder". tc.quoteToken is still the ORIGINAL unwrapped
-        // value (address(0) for native), matching depositHolderReward -- not the WETH-wrapped quote_.
-        IDuckTokenMig(token_).setRewardConfig(cfg.hook, tc.quoteToken, cfg.singleton);
+        // Only the OLD DuckToken template still has setRewardConfig at all -- DuckOpenToken (curve
+        // tokens launched after the open-token upgrade) sets its reward config once, at mint, using
+        // whatever dex config was current then (see DuckBondingCurve.createToken's own comment), so
+        // there's no privileged address left alive afterward for anything to call this on. try/catch
+        // here is the same "old template doesn't implement this, nothing to do" pattern as
+        // _unlockIfLocked above, for the same reason: this library's migrate() has to handle both
+        // token generations. For a DuckToken still going through this path, this call must run BEFORE
+        // _doMint (that's what first moves real balance into the PoolManager, and DuckToken only
+        // excludes poolManagerAddr once it's non-zero, so setting it first keeps that transfer from
+        // counting as a new "holder"), and quote_ here is the REAL pool currency (WETH when native, per
+        // the wrap above) -- passing tc.quoteToken (the pre-wrap value) instead was the original bug:
+        // it left rewardCurrency mismatched against what the hook actually sees, so every deposit into
+        // the round pool reverted and got silently caught as HolderRewardSkipped on every claim.
+        try IDuckTokenMig(token_).setRewardConfig(cfg.hook, quote_, cfg.singleton) {} catch {}
 
         poolId = _doMint(tc, cfg, token_, token0, token1, amount0, amount1);
 

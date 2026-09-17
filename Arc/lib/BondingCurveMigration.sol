@@ -13,7 +13,6 @@ import {PoolKey} from "./LaunchRouting.sol";
 
 interface IDuckTokenMig {
     function balanceOf(address account) external view returns (uint256);
-    function setRewardConfig(address hook_, address currency_, address poolManager_) external;
 }
 
 // Self-call back into the LaunchRouting-derived contract (DuckBondingCurve) that delegatecalled into this
@@ -161,11 +160,9 @@ library BondingCurveMigration {
             ? (token_, quote_, liqTokens,       migrationAmount)
             : (quote_, token_, migrationAmount, liqTokens);
 
-        // Must run BEFORE _doMint: that's what first moves real balance into the PoolManager, and the token
-        // only excludes poolManagerAddr once it's set, so setting it first keeps that transfer from counting
-        // as a new "holder".
-        IDuckTokenMig(token_).setRewardConfig(cfg.hook, quote_, cfg.singleton);
-
+        // Reward config is no longer set here -- DuckBondingCurve.createToken sets it at mint time now,
+        // using the same p.quoteToken this function also uses (Arc has no native-quote wrap, so the two
+        // can never disagree). No legacy token template exists on Arc to preserve a fallback path for.
         poolId = _doMint(tc, cfg, token_, token0, token1, amount0, amount1);
 
         _finishMint(tc, cfg, token_, token0, poolId, quote_);

@@ -17,12 +17,14 @@ import {V4Minting} from "duck-lib/V4Minting.sol";
 import {SupplyTiers} from "duck-lib/SupplyTiers.sol";
 
 interface IDuckCrowdfundTokenLocal {
-    function initToken(string calldata name_, string calldata symbol_, uint256 totalSupply_, bool lockUntilUnlock_, string calldata metaURI_) external;
+    function initToken(
+        string calldata name_, string calldata symbol_, uint256 totalSupply_, bool lockUntilUnlock_, string calldata metaURI_,
+        address hook_, address currency_, address poolManager_
+    ) external;
     function renounceOwnership() external;
     function approve(address spender, uint256 amount) external returns (bool);
     function transfer(address to, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
-    function setRewardConfig(address hook_, address currency_, address poolManager_) external;
 }
 
 interface IDuckVaultFactoryLocal {
@@ -300,7 +302,7 @@ contract DuckCrowdfund is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
             if (!ok) revert TransferFailed();
         }
 
-        token = _deployToken(name_, symbol_, metaURI_, vanitySalt_, supplyTier_, vaultBps_);
+        token = _deployToken(name_, symbol_, metaURI_, vanitySalt_, supplyTier_, vaultBps_, dexQuoteAsset_);
 
         campaignId = _recordCampaign(
             name_, symbol_, metaURI_, dexQuoteAsset_, goalNativeWei_, startTime_, vanitySalt_, hookFeeBps_, creatorBps_, vaultBps_, burnBps_, supplyTier_, token
@@ -309,12 +311,18 @@ contract DuckCrowdfund is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
 
     function _deployToken(
         string memory name_, string memory symbol_, string memory metaURI_, bytes32 vanitySalt_, uint8 supplyTier_,
-        uint16 vaultBps_
+        uint16 vaultBps_, address dexQuoteAsset_
     ) private returns (address token) {
         bytes32 salt = keccak256(abi.encode(msg.sender, vanitySalt_));
         token = _clone(tokenImpl, salt);
         if (uint16(uint160(token)) != VANITY_SUFFIX) revert VanityAddressRequired();
-        IDuckCrowdfundTokenLocal(token).initToken(name_, symbol_, SupplyTiers.resolve(supplyTier_), false, metaURI_);
+        // Reward config is set here, at mint, using this contract's CURRENT dex config and the
+        // campaign's own quote ERC-20 -- Arc has no native quote/WETH-wrap step, so dexQuoteAsset_ is
+        // already the real pool currency, unlike the shared-tree build. No privileged address is left
+        // able to call anything into this token after this point -- renounceOwnership below is real,
+        // not just a display value, since there's no second role like the old separate mintManager
+        // waiting to be used later.
+        IDuckCrowdfundTokenLocal(token).initToken(name_, symbol_, SupplyTiers.resolve(supplyTier_), false, metaURI_, v4Hook, dexQuoteAsset_, v4Singleton);
         IDuckCrowdfundTokenLocal(token).renounceOwnership();
 
         // Vault/lending is opt-in: vaultBps_ == 0 means the creator chose no vault cut at all, so
@@ -424,8 +432,9 @@ contract DuckCrowdfund is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
         address hookAddr = v4Hook;
         if (hookAddr == address(0)) revert HookNotSet();
 
-        // A real pool exists as of this call -- the one moment this token learns its reward config.
-        IDuckCrowdfundTokenLocal(token).setRewardConfig(hookAddr, quoteCurrency, v4Singleton);
+        // Reward config is no longer set here -- _deployToken sets it at mint time now, using the same
+        // dexQuoteAsset this function also uses (Arc has no native-quote wrap, so the two can never
+        // disagree).
 
         (address token0, address token1) = token < quoteCurrency ? (token, quoteCurrency) : (quoteCurrency, token);
         (uint256 amount0, uint256 amount1) = token == token0

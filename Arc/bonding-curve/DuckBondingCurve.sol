@@ -32,7 +32,8 @@ interface IDuckVaultFactoryLocal {
 interface ITokenInit {
     function initToken(
         string memory name_, string memory symbol_, uint256 totalSupply_,
-        bool lockUntilUnlock_, string memory metaURI_
+        bool lockUntilUnlock_, string memory metaURI_,
+        address hook_, address currency_, address poolManager_
     ) external;
 }
 
@@ -241,7 +242,13 @@ contract DuckBondingCurve is Initializable, UUPSUpgradeable, Ownable2StepUpgrade
 
         // No launch-phase lock: DuckGenesisHook only initializes pools this contract registers, at migration,
         // so a freely transferable token can't be used to seed or front-run its pool.
-        ITokenInit(token).initToken(p.name, p.symbol, a.supply, false, p.metaURI);
+        //
+        // Reward config is set here too, at creation, using this contract's CURRENT dex config and the
+        // launch's own quote ERC-20 -- Arc has no native quote (NATIVE_QUOTE_ALLOWED is false) and no
+        // WETH-wrap step, so p.quoteToken is already the real pool currency, unlike the shared-tree
+        // build. Accepted tradeoff: a token that migrates after a later setDexConfig call keeps the
+        // hook/poolManager that were current at its creation, not whatever it actually migrates onto.
+        ITokenInit(token).initToken(p.name, p.symbol, a.supply, false, p.metaURI, v4Hook, p.quoteToken, v4Singleton);
         _registerToken(token, msg.sender, p.quoteToken, a, vQuote, migTarget, p.hookFeeBps, p.creatorBps, p.vaultBps, p.burnBps);
         emit TokenCreated(token, msg.sender, p.quoteToken, a.supply, vQuote, migTarget);
 

@@ -10,8 +10,13 @@ pragma solidity ^0.8.32;
 // out of any pool before migration; DuckGenesisHook now makes it unnecessary, since it won't initialize
 // a pool its launchers haven't registered or take liquidity from anyone but them.
 //
-// initToken keeps DuckToken's signature so the launch contracts call it unchanged. They pass `false` for
-// the lock; `true` is refused rather than silently ignored.
+// Reward config (hook/currency/poolManager) is set inline, in initToken, by the same caller in the same
+// transaction as everything else here -- not through a separate setRewardConfig a privileged address
+// could call later. A prior design kept a `mintManager` address alive indefinitely just for that one
+// later call; that's exactly the "hidden owner" pattern token scanners flag (renounceOwnership zeroes
+// `_owner` immediately, but a second, un-renounced privileged address lived on with real power). Folding
+// it into initToken means there's never a second privileged role to begin with -- once this call
+// returns, nothing in this contract answers to any address the way an owner would.
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/VotesUpgradeable.sol";
@@ -34,15 +39,12 @@ abstract contract DuckOpenToken is Initializable, VotesUpgradeable {
     error VaultAlreadySet();
     error DelegationDisabled();
     error FutureLookup(uint256 timepoint, uint256 clockNow);
-    error RewardConfigAlreadySet();
     error NotRewardHook();
     error Reentrant();
 
     address private constant DEAD = 0x000000000000000000000000000000000000dEaD;
 
     address private _owner;
-
-    address public  mintManager;
 
     address public immutable vaultFactory;
 
@@ -59,9 +61,10 @@ abstract contract DuckOpenToken is Initializable, VotesUpgradeable {
     Checkpoints.Trace208 private _holderCountCheckpoints;
 
     // ---- holder reward: 5% of hook fees (see the hook's claimFees), pro-rata and time-weighted over
-    // 12h rounds, pushed out in batches. Config is set once at real-pool-creation time (see
-    // setRewardConfig); a crowdfund token has no pool until the raise succeeds, so everything here
-    // treats rewardHook == address(0) as "not wired up yet, do nothing". ----
+    // 12h rounds, pushed out in batches. Config is set once, in initToken, using the caller's current
+    // hook/poolManager and the pool's real (post-WETH-wrap-if-native) quote currency -- see initToken's
+    // own comment. A crowdfund/curve token has no real pool yet at that point, but claimFees can never
+    // fire for a pool that doesn't exist, so an early-but-armed rewardHook is inert until one does. ----
     address public rewardCurrency;     // pool's quote currency; address(0) = native
     address public rewardHook;         // only address allowed to deposit into the round pool
     address public poolManagerAddr;    // chain's V4 singleton -- the real "liquidity" exclusion,
@@ -151,22 +154,42 @@ abstract contract DuckOpenToken is Initializable, VotesUpgradeable {
         emit VaultSet(vault_);
     }
 
+    // Reward config used to be set later, by a separate setRewardConfig call restricted to a
+    // `mintManager` address that lived on indefinitely after the token's real owner had already
+    // renounced -- exactly the "hidden owner" pattern token scanners flag. Taking hook_/currency_/
+    // poolManager_ here instead means the caller (the launch contract, in the same transaction as
+    // everything else in this function) supplies its own CURRENT dex config and the pool's real quote
+    // currency (post-WETH-wrap if the launch's nominal quote is native -- the caller must resolve that
+    // itself; this function only stores what it's given). No address is left with any special calling
+    // right into this contract once this call returns. The one accepted tradeoff: if a bonding-curve or
+    // crowdfund token sits unmigrated across a later dex-config change (a new hook, a new pool manager),
+    // its reward wiring stays pinned to whatever was current at mint, not whatever it migrates onto --
+    // narrow and rare next to the alternative of a permanent extra privileged role.
     function initToken(
         string calldata name_,
         string calldata symbol_,
         uint256          totalSupply_,
         bool             lockUntilUnlock_,
-        string calldata metaURI_
+        string calldata metaURI_,
+        address          hook_,
+        address          currency_,
+        address          poolManager_
     ) external initializer {
         if (lockUntilUnlock_) revert TransferLockUnsupported();
+        if (hook_ == address(0) || poolManager_ == address(0)) revert ZeroAddress();
         __EIP712_init(name_, "1");
 
-        mintManager  = msg.sender;
         _owner       = msg.sender;
         _name        = name_;
         _symbol      = symbol_;
         _totalSupply = totalSupply_;
         _metaURI     = metaURI_;
+
+        rewardHook      = hook_;
+        rewardCurrency  = currency_; // address(0) is a valid value here (native quote)
+        poolManagerAddr = poolManager_;
+        roundStart      = block.timestamp;
+        emit RewardConfigSet(hook_, currency_, poolManager_);
 
         _balances[msg.sender] = totalSupply_;
         emit Transfer(address(0), msg.sender, totalSupply_);
@@ -292,19 +315,6 @@ abstract contract DuckOpenToken is Initializable, VotesUpgradeable {
     }
 
     // ---- holder reward ----
-
-    // Called once by mintManager (the launch contract) the moment a real pool exists. A crowdfund
-    // token has no hook/pool at initToken time, so this can't be set earlier.
-    function setRewardConfig(address hook_, address currency_, address poolManager_) external {
-        if (msg.sender != mintManager) revert NotOwner();
-        if (rewardHook != address(0)) revert RewardConfigAlreadySet();
-        if (hook_ == address(0) || poolManager_ == address(0)) revert ZeroAddress();
-        rewardHook = hook_;
-        rewardCurrency = currency_; // address(0) is a valid value here (native quote)
-        poolManagerAddr = poolManager_;
-        roundStart = block.timestamp;
-        emit RewardConfigSet(hook_, currency_, poolManager_);
-    }
 
     // Excludes DEAD and the pool's own reserves (PoolManager) -- the only two addresses that can never
     // be a genuine holder. Contract addresses are NOT excluded: any address, EOA or contract, that

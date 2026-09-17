@@ -13,12 +13,14 @@ import {V4Minting} from "duck-lib/V4Minting.sol";
 import {SupplyTiers} from "duck-lib/SupplyTiers.sol";
 
 interface IDuckCrowdfundTokenLocal {
-    function initToken(string calldata name_, string calldata symbol_, uint256 totalSupply_, bool lockUntilUnlock_, string calldata metaURI_) external;
+    function initToken(
+        string calldata name_, string calldata symbol_, uint256 totalSupply_, bool lockUntilUnlock_, string calldata metaURI_,
+        address hook_, address currency_, address poolManager_
+    ) external;
     function renounceOwnership() external;
     function approve(address spender, uint256 amount) external returns (bool);
     function transfer(address to, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
-    function setRewardConfig(address hook_, address currency_, address poolManager_) external;
 }
 
 interface IDuckVaultFactoryLocal {
@@ -306,7 +308,7 @@ contract DuckCrowdfund is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
             if (!ok) revert TransferFailed();
         }
 
-        token = _deployToken(name_, symbol_, metaURI_, vanitySalt_, supplyTier_, vaultBps_);
+        token = _deployToken(name_, symbol_, metaURI_, vanitySalt_, supplyTier_, vaultBps_, dexQuoteAsset_);
 
         campaignId = _recordCampaign(
             name_, symbol_, metaURI_, dexQuoteAsset_, goalNativeWei_, startTime_, vanitySalt_, hookFeeBps_, creatorBps_, vaultBps_, burnBps_, supplyTier_, token
@@ -315,12 +317,20 @@ contract DuckCrowdfund is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
 
     function _deployToken(
         string calldata name_, string calldata symbol_, string calldata metaURI_, bytes32 vanitySalt_, uint8 supplyTier_,
-        uint16 vaultBps_
+        uint16 vaultBps_, address dexQuoteAsset_
     ) private returns (address token) {
         bytes32 salt = keccak256(abi.encode(msg.sender, vanitySalt_));
         token = _clone(tokenImpl, salt);
         if (uint16(uint160(token)) != VANITY_SUFFIX) revert VanityAddressRequired();
-        IDuckCrowdfundTokenLocal(token).initToken(name_, symbol_, SupplyTiers.resolve(supplyTier_), false, metaURI_);
+        // Reward config is set here, at mint, using this contract's CURRENT dex config and the pool's
+        // real quote currency -- WETH when the campaign's own quote is native, since that's what
+        // _seedV4 always wraps it into on success. Computed the same way here as there so the two can
+        // never disagree the way they used to (see _seedV4's own comment on the bug this replaced).
+        // No privileged address is left able to call anything into this token after this point --
+        // renounceOwnership below is real, not just a display value, since there's no second role like
+        // the old separate mintManager waiting to be used later.
+        address rewardCurrency = dexQuoteAsset_ == address(0) ? weth : dexQuoteAsset_;
+        IDuckCrowdfundTokenLocal(token).initToken(name_, symbol_, SupplyTiers.resolve(supplyTier_), false, metaURI_, v4Hook, rewardCurrency, v4Singleton);
         IDuckCrowdfundTokenLocal(token).renounceOwnership();
 
         // Vault/lending is opt-in: vaultBps_ == 0 means the creator chose no vault cut at all, so
@@ -428,17 +438,16 @@ contract DuckCrowdfund is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
         address hookAddr = v4Hook;
         if (hookAddr == address(0)) revert HookNotSet();
 
-        // A real pool exists as of this call -- the one moment this token learns its reward config.
-        // quoteCurrency is still the ORIGINAL unwrapped value (address(0) for native), matching
-        // DuckToken.depositHolderReward's handling, not the WETH-wrapped quoteToken computed below.
-        IDuckCrowdfundTokenLocal(token).setRewardConfig(hookAddr, quoteCurrency, v4Singleton);
-
         address quoteToken = quoteCurrency;
         if (quoteCurrency == address(0)) {
             IWETHLocal(weth).deposit{value: quoteAmount}();
             quoteToken = weth;
         }
 
+        // Reward config is no longer set here -- _deployToken sets it at mint time now, using the same
+        // wrap-if-native currency this function computes above (both read the same dexQuoteAsset/weth,
+        // so they can't disagree). Crowdfund has only ever had the one token template (unlike bonding
+        // curve's old DuckToken/new DuckOpenToken split), so there's no legacy path here to preserve.
         (address token0, address token1) = token < quoteToken ? (token, quoteToken) : (quoteToken, token);
         (uint256 amount0, uint256 amount1) = token == token0
             ? (lpSupply, quoteAmount)

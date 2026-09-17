@@ -24,3 +24,8 @@ remappings = [
 [rpc_endpoints]
 robinhood = "${ROBINHOOD_RPC_URL}"
 ink = "${INK_RPC_URL}"
+
+# Robinhood Chain (4663) isn't in forge's built-in Etherscan chain registry -- its unified V2 API
+# endpoint has to be spelled out explicitly, key from env (never committed).
+[etherscan]
+robinhood = { key = "${ETHERSCAN_API_KEY}", chain = 4663, url = "https://api.etherscan.io/v2/api" }
