@@ -147,12 +147,9 @@ npm run deploy     # new Goldsky version, tagged "current"
 `current` tag to it, so consumers using the `/current/` endpoint never need a URL change (the backend and
 keeper default to it). It needs the `goldsky` CLI logged in to the DuckProtocol project.
 
-`render.yaml` in this directory describes the self-hosted graph-node Arc used before Goldsky supported it.
-It is no longer used; delete it once those Render services are gone.
-
 ## Changing it
 
-Everything here except `render.yaml` (retired) and this generator is generated. Edit the shared generator
+Everything here except this generator is generated. Edit the shared generator
 (`DuckProtocol-HQ/subgraph/gen_subgraphs.py`) or `gen_subgraph_arc.py`, then run
 `python3 gen_subgraph_arc.py`.
 '''
