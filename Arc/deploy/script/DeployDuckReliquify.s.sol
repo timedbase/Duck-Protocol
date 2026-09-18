@@ -6,7 +6,7 @@ pragma solidity ^0.8.32;
 // A brand-new fourth launch family, added to the already-live Arc protocol -- reuses the same
 // v4Singleton/v4PositionManager/v4Hook/platformWallet/universalRouter every other Arc family already
 // shares (read live off the deployed DuckCrowdfund proxy rather than re-guessed). Deployed via a
-// plain CREATE2-salted ERC1967Proxy (constructor-time initialize(), atomic -- no front-running window)
+// plain-CREATE ERC1967Proxy (impls are CREATE2-salted) (constructor-time initialize(), atomic -- no front-running window)
 // rather than DeterministicProxyFactory: unlike the shared tree, Arc has no cross-chain
 // address-matching goal for this deploy (it's a single, standalone chain), so the extra indirection
 // isn't needed here.
@@ -18,6 +18,8 @@ pragma solidity ^0.8.32;
 // NOT done by this script, required before any migration can reach seedPool():
 //   1. DuckGenesisHook(hookAddr).addLauncher(<this proxy>) -- by the hook owner, on Arc.
 //      approveMigration() checks this defensively and reverts with HookNotAdded() if it's missing.
+//   1b. DuckVaultFactory(VAULT_FACTORY).setFamily(<this proxy>, true) -- by the factory owner, on Arc.
+//      approveMigration() creates a vault for the new token, which reverts UnknownFamily otherwise.
 //   2. reliquify.setRoutes(oldToken, ...) per migration once proposed, and reliquify.setRoutes(ARC_USDC, ...)
 //      once (shared by every migration) if no earlier one has already configured it.
 //
@@ -45,7 +47,6 @@ contract DeployDuckReliquify is Script {
 
     // "v1" -- Reliquify's own family, new to Arc (not an upgrade of an existing proxy).
     bytes32 constant SALT_RELIQUIFY_IMPL       = keccak256("duckfun.arc.v1.DuckReliquify.impl");
-    bytes32 constant SALT_RELIQUIFY_PROXY      = keccak256("duckfun.arc.v1.DuckReliquify.proxy");
     bytes32 constant SALT_RELIQUIFY_TOKEN_IMPL = keccak256("duckfun.arc.v1.DuckReliquifyToken.impl");
 
     function run() external returns (address reliquifyAddr, address tokenImplAddr) {
@@ -68,7 +69,10 @@ contract DeployDuckReliquify is Script {
         tokenImplAddr = address(new DuckReliquifyToken{salt: SALT_RELIQUIFY_TOKEN_IMPL}(VAULT_FACTORY));
 
         address reliquifyImpl = address(new DuckReliquify{salt: SALT_RELIQUIFY_IMPL}());
-        reliquifyAddr = address(new ERC1967Proxy{salt: SALT_RELIQUIFY_PROXY}(
+        // Plain CREATE (no salt), deliberately: a salted deploy goes through the CREATE2 deployer, which
+        // would then be initialize()'s msg.sender and so the proxy's owner. Constructor-time init from a
+        // real broadcast tx keeps the deployer as owner and is still atomic.
+        reliquifyAddr = address(new ERC1967Proxy(
             reliquifyImpl,
             abi.encodeCall(DuckReliquify.initialize, (
                 tokenImplAddr, ARC_POOL_MANAGER, ARC_POSITION_MANAGER, hookAddr, platformWallet
@@ -87,6 +91,7 @@ contract DeployDuckReliquify is Script {
         console.log("");
         console.log("Not done by this script -- do these yourself once verified on a fork:");
         console.log("  DuckGenesisHook.addLauncher(<this proxy>) by the hook owner --", hookAddr);
+        console.log("  DuckVaultFactory.setFamily(<this proxy>, true) by the factory owner -- else approveMigration reverts UnknownFamily");
         console.log("  setRoutes(oldToken, ...) per migration, and setRoutes(ARC_USDC, ...) once, if needed");
     }
 }

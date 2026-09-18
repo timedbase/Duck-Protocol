@@ -13,6 +13,8 @@ pragma solidity ^0.8.32;
 //   1. DuckGenesisHook(hookAddr).addLauncher(<this proxy>) -- by the hook owner, on each chain.
 //      approveMigration() checks this defensively and reverts with HookNotAdded() if it's missing,
 //      rather than failing deep inside V4Minting's external call chain.
+//   1b. DuckVaultFactory(VAULT_FACTORY).setFamily(<this proxy>, true) -- by the factory owner, on each chain.
+//      approveMigration() creates a vault for the new token, which reverts UnknownFamily otherwise.
 //   2. reliquify.setUniversalRouter(<chain's Universal Router>) and reliquify.setRoutes(oldToken, ...)
 //      for each migration's specific old token (always sold for native/WETH, see the file header on
 //      DuckReliquify.sol -- every migration's pool is WETH-paired, unconditionally), once a real
@@ -43,13 +45,15 @@ contract DeployDuckReliquify is Script {
     address constant RH_WETH                = 0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73;
     address constant RH_V4_POOL_MANAGER     = 0x8366a39CC670B4001A1121B8F6A443A643e40951;
     address constant RH_V4_POSITION_MANAGER = 0x58daec3116aae6D93017bAAea7749052E8a04fA7;
-    address constant RH_HOOK                = 0x483b529fa121c5402778a511A98fB326940042CC;
+    // Hooks are the LIVE DuckGenesisHook each chain's crowdfund proxy points at (read on-chain), not
+    // DEPLOYMENT.md's original DuckHookV4 addresses, which UpgradeToGenesis superseded.
+    address constant RH_HOOK                = 0x18bd65Fb1c44DD629caD7c7F5B96aD2bCAF76ACC;
     address constant RH_UNIVERSAL_ROUTER    = 0x8876789976dEcBfCbBbe364623C63652db8C0904;
 
     address constant INK_WETH                = 0x4200000000000000000000000000000000000006;
     address constant INK_V4_POOL_MANAGER     = 0x360E68faCcca8cA495c1B759Fd9EEe466db9FB32;
     address constant INK_V4_POSITION_MANAGER = 0x1b35d13a2E2528f192637F14B05f0Dc0e7dEB566;
-    address constant INK_HOOK                = 0x5a05a1f0A101237D8c350EFfA54f4b3c9bc142cc;
+    address constant INK_HOOK                = 0x9196F51a55Ff2c62b03d6e96dD72c0BB52F12AcC;
     address constant INK_UNIVERSAL_ROUTER    = 0x112908daC86e20e7241B0927479Ea3Bf935d1fa0;
 
     // "v5": after v1 DeployDuckProtocol, v2 UpgradeToGenesis, v3 UpgradeCurveOpenToken,
@@ -128,6 +132,7 @@ contract DeployDuckReliquify is Script {
         console.log("");
         console.log("Not done by this script -- do these yourself once verified on a fork:");
         console.log("  DuckGenesisHook.addLauncher(<this proxy>) by the hook owner, on this chain --", _v4Hook());
+        console.log("  DuckVaultFactory.setFamily(<this proxy>, true) by the factory owner -- else approveMigration reverts UnknownFamily");
         console.log("  setRoutes(oldToken, ...) per migration, once proposed -- every pool is always WETH-paired");
     }
 }
