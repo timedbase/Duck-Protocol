@@ -5,7 +5,7 @@ schema:
 dataSources:
   - kind: ethereum
     name: DuckBondingCurve
-    network: arc
+    network: arc-mainnet
     source:
       address: "0xFD5FAE76B375e1dA6A3F1759eB84B26b39dE706C"
       abi: DuckBondingCurve
@@ -92,7 +92,7 @@ dataSources:
       file: ./src/duck-bonding-curve.ts
   - kind: ethereum
     name: DuckLauncher
-    network: arc
+    network: arc-mainnet
     source:
       address: "0xf916E628503639DCb4726d4B75745Ad678dc4d02"
       abi: DuckLauncher
@@ -164,7 +164,7 @@ dataSources:
       file: ./src/duck-launcher.ts
   - kind: ethereum
     name: DuckCrowdfund
-    network: arc
+    network: arc-mainnet
     source:
       address: "0x0c8f0f1353f2d963D03C3eC558D20b151DaF7214"
       abi: DuckCrowdfund
@@ -244,8 +244,100 @@ dataSources:
           handler: handleVaultFactorySet
       file: ./src/duck-crowdfund.ts
   - kind: ethereum
+    name: DuckReliquify
+    network: arc-mainnet
+    source:
+      address: "0xf7F65C4e96E8D2f4b960E1d7837Cf3c4520412bA"
+      abi: DuckReliquify
+      startBlock: 21535490
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - ReliquifyMigration
+        - ReliquifyDeposit
+        - ReliquifyClaim
+        - ReliquifyRefund
+        - ReliquifyBuyback
+        - QuoteToken
+        - QuotePrice
+        - DiscoveredReferencePool
+        - QuoteDiscovery
+        - AdminEvent
+      abis:
+        - name: DuckReliquify
+          file: ./abis/DuckReliquify.json
+        - name: DuckToken
+          file: ./abis/DuckToken.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: UniswapV3Factory
+          file: ./abis/UniswapV3Factory.json
+        - name: UniswapV3Pool
+          file: ./abis/UniswapV3Pool.json
+        - name: V4StateReader
+          file: ./abis/V4StateReader.json
+      eventHandlers:
+        - event: AddressExcluded(indexed uint256,indexed address)
+          handler: handleAddressExcluded
+        - event: BuybackBurned(indexed uint256,uint256,uint256)
+          handler: handleBuybackBurned
+        - event: Claimed(indexed uint256,indexed address,uint256)
+          handler: handleClaimed
+        - event: Deposited(indexed uint256,indexed address,uint256,bool)
+          handler: handleDeposited
+        - event: DexConfigSet(address,address,address)
+          handler: handleDexConfigSet
+        - event: ERC20Rescued(indexed address,indexed address,uint256)
+          handler: handleERC20Rescued
+        - event: ETHRescued(indexed address,uint256)
+          handler: handleETHRescued
+        - event: Initialized(uint64)
+          handler: handleInitialized
+        - event: MigrationAborted(indexed uint256)
+          handler: handleMigrationAborted
+        - event: MigrationApproved(indexed uint256,indexed address,uint256)
+          handler: handleMigrationApproved
+        - event: MigrationProposed(indexed uint256,indexed address,indexed address)
+          handler: handleMigrationProposed
+        - event: MigrationRejected(indexed uint256)
+          handler: handleMigrationRejected
+        - event: OwnershipTransferStarted(indexed address,indexed address)
+          handler: handleOwnershipTransferStarted
+        - event: OwnershipTransferred(indexed address,indexed address)
+          handler: handleOwnershipTransferred
+        - event: PausedSet(indexed uint256,bool)
+          handler: handlePausedSet
+        - event: PlatformWalletSet(indexed address)
+          handler: handlePlatformWalletSet
+        - event: PoolSeeded(indexed uint256,bytes32,uint256)
+          handler: handlePoolSeeded
+        - event: Refunded(indexed uint256,indexed address,uint256)
+          handler: handleRefunded
+        - event: ReliquifyFeeSet(uint256)
+          handler: handleReliquifyFeeSet
+        - event: RouteSucceeded(indexed address,indexed uint256,uint256)
+          handler: handleRouteSucceeded
+        - event: RoutesSet(indexed address,uint256)
+          handler: handleRoutesSet
+        - event: SnapshotBatchSubmitted(indexed uint256,uint256,uint256)
+          handler: handleSnapshotBatchSubmitted
+        - event: SnapshotFinalized(indexed uint256,uint256)
+          handler: handleSnapshotFinalized
+        - event: TokenImplSet(indexed address)
+          handler: handleTokenImplSet
+        - event: UniversalRouterUpdated(indexed address)
+          handler: handleUniversalRouterUpdated
+        - event: Upgraded(indexed address)
+          handler: handleUpgraded
+        - event: VaultFactorySet(indexed address)
+          handler: handleVaultFactorySet
+      file: ./src/duck-reliquify.ts
+  - kind: ethereum
     name: DuckGenesisHook
-    network: arc
+    network: arc-mainnet
     source:
       address: "0x6A44E6a1dF1e4cC329Dda87389ecA12DA9422aCC"
       abi: DuckGenesisHook
@@ -296,7 +388,7 @@ dataSources:
       file: ./src/duck-genesis-hook.ts
   - kind: ethereum
     name: PoolManager
-    network: arc
+    network: arc-mainnet
     source:
       address: "0x8366a39CC670B4001A1121B8F6A443A643e40951"
       abi: PoolManager
@@ -330,7 +422,7 @@ dataSources:
       file: ./src/pool-manager.ts
   - kind: ethereum
     name: DuckVaultFactory
-    network: arc
+    network: arc-mainnet
     source:
       address: "0xE3D4d83307E6f5A2C7B4b85436eAacAfd1B873C3"
       abi: DuckVaultFactory
@@ -373,7 +465,7 @@ dataSources:
       file: ./src/duck-vault-factory.ts
   - kind: ethereum
     name: DuckVaultConfig
-    network: arc
+    network: arc-mainnet
     source:
       address: "0xb0d1E41Af535a986e61A9ce39ea31e7ef65A4EE8"
       abi: DuckVaultConfig
@@ -425,7 +517,7 @@ dataSources:
       file: ./src/duck-vault-config.ts
   - kind: ethereum
     name: DuckTokenGovernorFactory
-    network: arc
+    network: arc-mainnet
     source:
       address: "0x3271b5e9F53E5096508519126528373Adc4e3Aec"
       abi: DuckTokenGovernorFactory
@@ -465,7 +557,7 @@ dataSources:
 templates:
   - kind: ethereum
     name: DuckToken
-    network: arc
+    network: arc-mainnet
     source:
       abi: DuckToken
     mapping:
@@ -515,7 +607,7 @@ templates:
 
   - kind: ethereum
     name: DuckVault
-    network: arc
+    network: arc-mainnet
     source:
       abi: DuckVault
     mapping:
@@ -580,7 +672,7 @@ templates:
 
   - kind: ethereum
     name: DuckTokenGovernor
-    network: arc
+    network: arc-mainnet
     source:
       abi: DuckTokenGovernor
     mapping:
@@ -623,7 +715,7 @@ templates:
 
   - kind: ethereum
     name: TimelockControllerUpgradeable
-    network: arc
+    network: arc-mainnet
     source:
       abi: TimelockControllerUpgradeable
     mapping:
@@ -659,7 +751,7 @@ templates:
 
   - kind: ethereum
     name: DiscoveredV3Pool
-    network: arc
+    network: arc-mainnet
     source:
       abi: UniswapV3Pool
     mapping:

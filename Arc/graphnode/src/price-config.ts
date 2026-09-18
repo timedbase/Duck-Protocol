@@ -75,27 +75,27 @@ export function v4RefPools(network: string): V4RefPool[] {
 export function stableTokens(network: string): string[] {
   if (network == "robinhood-mainnet") return ["0x5fc5360d0400a0fd4f2af552add042d716f1d168", "0xce24439f2d9c6a2289f741120fe202248b666666"];
   if (network == "ink") return ["0x0200c29006150606b650577bbe7b6248f58470c1", "0xf1815bd50389c46847f0bda824ec8da914045d14", "0xe343167631d89b6ffc58b88d6b7fb0228795491d"];
-  if (network == "arc") return ["0x3600000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000"];
+  if (network == "arc-mainnet") return ["0x3600000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000"];
   return new Array<string>(0);
 }
 
 export function wrappedNative(network: string): string {
   if (network == "robinhood-mainnet") return "0x0bd7d308f8e1639fab988df18a8011f41eacad73";
   if (network == "ink") return "0x4200000000000000000000000000000000000006";
-  if (network == "arc") return "0x3600000000000000000000000000000000000000";
+  if (network == "arc-mainnet") return "0x3600000000000000000000000000000000000000";
   return "";
 }
 
 export function v3Factory(network: string): string {
   if (network == "robinhood-mainnet") return "0x1f7d7550b1b028f7571e69a784071f0205fd2efa";
   if (network == "ink") return "0x640887a9ba3a9c53ed27d0f7e8246a4f933f3424";
-  if (network == "arc") return "0xf0db7b58379503491d857db50ac9ece64c653918";
+  if (network == "arc-mainnet") return "0xf0db7b58379503491d857db50ac9ece64c653918";
   return "";
 }
 
 export function v4PoolManager(network: string): string {
   if (network == "robinhood-mainnet") return "0x8366a39cc670b4001a1121b8f6a443a643e40951";
   if (network == "ink") return "0x360e68faccca8ca495c1b759fd9eee466db9fb32";
-  if (network == "arc") return "0x8366a39cc670b4001a1121b8f6a443a643e40951";
+  if (network == "arc-mainnet") return "0x8366a39cc670b4001a1121b8f6a443a643e40951";
   return "";
 }

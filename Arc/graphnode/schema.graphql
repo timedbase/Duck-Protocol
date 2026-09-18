@@ -2,6 +2,7 @@ enum TokenFamily {
   BondingCurve
   Launcher
   Crowdfund
+  Reliquify
 }
 
 # Decimals for an ERC20 quote token, read once from the token and cached. Native ETH (address(0))
@@ -101,6 +102,7 @@ type Token @entity(immutable: false) {
   holders: [Holder!]! @derivedFrom(field: "token")
   vault: Vault @derivedFrom(field: "token")
   campaign: Campaign @derivedFrom(field: "token")
+  reliquifyMigration: ReliquifyMigration @derivedFrom(field: "token")
   launch: Launch @derivedFrom(field: "token")
   # Holder rewards: config is fixed when the token's pool is created.
   rewardHook: Bytes
@@ -272,6 +274,88 @@ type Refund @entity(immutable: true) {
   campaign: Campaign!
   contributor: Bytes!
   amount: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
+
+type ReliquifyMigration @entity(immutable: false) {
+  id: String! # reliquify address + "-" + migrationId
+  migrationId: BigInt!
+  leader: Bytes!
+  oldToken: Bytes!
+  # The new token; set when the platform approves the migration.
+  token: Token
+  # Proposed -> Live -> Seeded, or Rejected / Aborted.
+  status: String!
+  snapshotBatches: Int!
+  snapshotFinalized: Boolean!
+  excludedCount: Int!
+  # The leader's running snapshot total. Exclusions don't emit a new total, so this can lag them until
+  # the snapshot is finalized, which sets the authoritative figure.
+  eligibleSupply: BigInt!
+  # The new token's whole fixed supply: the old token's totalSupply() at approval.
+  newTokenSupply: BigInt
+  # Old tokens deposited and still counted: pre-seed deposits net of refunds, plus every post-seed deposit.
+  totalDeposited: BigInt!
+  preSeedDeposited: BigInt!
+  postSeedDeposited: BigInt!
+  # Pre-seed deposits reached half of eligibleSupply, so the pool can be seeded.
+  thresholdReached: Boolean!
+  totalClaimed: BigInt!
+  totalRefunded: BigInt!
+  # Native ETH (Arc: USDC) the old tokens sold for when the pool was seeded.
+  quoteRaised: BigInt
+  poolId: Bytes
+  seededAt: BigInt
+  buybackQuoteSpent: BigInt!
+  tokensBurned: BigInt!
+  paused: Boolean!
+  deposits: [ReliquifyDeposit!]! @derivedFrom(field: "migration")
+  claims: [ReliquifyClaim!]! @derivedFrom(field: "migration")
+  refunds: [ReliquifyRefund!]! @derivedFrom(field: "migration")
+  buybacks: [ReliquifyBuyback!]! @derivedFrom(field: "migration")
+  createdAtBlock: BigInt!
+  createdAtTimestamp: BigInt!
+  createdAtTx: Bytes!
+}
+
+type ReliquifyDeposit @entity(immutable: true) {
+  id: Bytes!
+  migration: ReliquifyMigration!
+  account: Bytes!
+  amount: BigInt! # old tokens actually received (after any transfer fee)
+  postSeed: Boolean!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
+
+type ReliquifyClaim @entity(immutable: true) {
+  id: Bytes!
+  migration: ReliquifyMigration!
+  account: Bytes!
+  amount: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
+
+type ReliquifyRefund @entity(immutable: true) {
+  id: Bytes!
+  migration: ReliquifyMigration!
+  account: Bytes!
+  amount: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
+
+type ReliquifyBuyback @entity(immutable: true) {
+  id: Bytes!
+  migration: ReliquifyMigration!
+  quoteIn: BigInt!
+  tokensBurned: BigInt!
   blockNumber: BigInt!
   timestamp: BigInt!
   txHash: Bytes!

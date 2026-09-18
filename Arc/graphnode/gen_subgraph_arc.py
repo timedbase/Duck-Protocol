@@ -10,8 +10,8 @@ What this script changes for Arc:
     data source;
   - pricing: native USDC and the USDC ERC-20 are the $1 stablecoin, and a price quoted in native units is
     already USD (there is no ETH reference on Arc);
-  - deploy.sh targets the self-hosted graph-node in render.yaml instead of Goldsky, which doesn't index
-    Arc mainnet.
+  - deploy.sh is the same Goldsky deploy as the other two chains (Goldsky now indexes Arc mainnet, so the
+    self-hosted graph-node this used to target is retired).
 
   python3 gen_subgraph_arc.py        # rewrites abis/, src/, schema, manifest, deploy.sh, package.json, README
 """
@@ -22,9 +22,10 @@ HQ_GENERATOR = os.environ.get(
     'HQ_SUBGRAPH_GENERATOR', '/home/mindless/Pictures/Unstable/DuckLibrary/DuckProtocol-HQ/subgraph/gen_subgraphs.py')
 ARC_OUT = os.path.join(HERE, '..', 'deploy', 'out')
 
-NETWORK = 'arc'                  # must match the graph-node's `ethereum` setting in render.yaml
-SUBGRAPH_NAME = 'duckprotocol-arc'
+NETWORK = 'arc-mainnet'          # Goldsky's subgraph network slug for Arc mainnet (5042), like robinhood-mainnet
+SUBGRAPH_NAME = 'duck-subgraph-arc'   # same naming as duck-subgraph-rh / duck-subgraph-ink
 START_BLOCK = 20792816           # block of the first DeployDuckProtocolArc transaction
+RELIQUIFY_START_BLOCK = 21535490 # just before DeployDuckReliquify's first transaction (block 21535493)
 USDC = '0x3600000000000000000000000000000000000000'
 ZERO = '0x0000000000000000000000000000000000000000'
 HOOK = '0x6A44E6a1dF1e4cC329Dda87389ecA12DA9422aCC'
@@ -36,11 +37,12 @@ ADDRESSES = {
     'DuckBondingCurve':         '0xFD5FAE76B375e1dA6A3F1759eB84B26b39dE706C',
     'DuckLauncher':             '0xf916E628503639DCb4726d4B75745Ad678dc4d02',
     'DuckCrowdfund':            '0x0c8f0f1353f2d963D03C3eC558D20b151DaF7214',
+    'DuckReliquify':            '0xf7F65C4e96E8D2f4b960E1d7837Cf3c4520412bA',
     'DuckVaultFactory':         '0xE3D4d83307E6f5A2C7B4b85436eAacAfd1B873C3',
     'DuckVaultConfig':          '0xb0d1E41Af535a986e61A9ce39ea31e7ef65A4EE8',
     'DuckTokenGovernorFactory': '0x3271b5e9F53E5096508519126528373Adc4e3Aec',
 }
-CFG = dict(network=NETWORK, chainName='Arc (5042)', slug=SUBGRAPH_NAME, startBlock=START_BLOCK,
+CFG = dict(network=NETWORK, chainName='Arc (5042)', slug=SUBGRAPH_NAME, startBlock=START_BLOCK, reliquifyStartBlock=RELIQUIFY_START_BLOCK,
            hook=HOOK, genesisHook=HOOK, genesisStartBlock=START_BLOCK, poolManager=POOL_MANAGER)
 
 GENERATED = ['abis', 'src', 'schema.graphql', 'subgraph.yaml', 'deploy.sh', 'package.json', '.gitignore', 'README.md']
@@ -60,6 +62,8 @@ def patch(text, old, new):
 
 def configure(g):
     g.COMMON = ADDRESSES
+    # Every migration is USDC-paired on Arc (no ETH there), where the shared tree pairs them with native ETH.
+    g.RELIQUIFY_QUOTE = f'Address.fromString("{USDC}")'
     g.SOURCES = [s for s in g.SOURCES if s[0] != 'DuckHookV4']
     g.STABLES[NETWORK] = [USDC, ZERO]
     g.WRAPPED_NATIVE[NETWORK] = USDC
@@ -103,42 +107,15 @@ def load_abis(g):
     return abis
 
 
-DEPLOY = r'''#!/usr/bin/env bash
-# Deploys the DuckProtocol Arc subgraph to the self-hosted graph-node (render.yaml in this directory).
-# Goldsky doesn't index Arc mainnet (5042). The graph-node's admin API and IPFS are private Render services,
-# reachable only from inside the same Render workspace and region, so run this from there -- e.g. as a
-# one-off job on another service in the workspace (duckprotocol-hq-api has Node, npm, curl and git):
-#
-#   GRAPH_NODE_ADMIN_URL=http://duckprotocol-arc-graph-node:8020 \
-#   IPFS_URL=http://duckprotocol-arc-graph-ipfs:5001 bash deploy.sh
-set -euo pipefail
-cd "$(dirname "$0")"
-
-NAME=__NAME__
-GRAPH_NODE_ADMIN_URL="${GRAPH_NODE_ADMIN_URL:?set to the tunneled graph-node admin URL, e.g. http://duckprotocol-arc-graph-node:8020}"
-IPFS_URL="${IPFS_URL:?set to the tunneled IPFS URL, e.g. http://duckprotocol-arc-graph-ipfs:5001}"
-VERSION=$(date +%Y.%m.%d%H%M%S)
-
-npx graph codegen
-npx graph build
-# Registers the name on first deploy; on later deploys the name already exists and this is skipped.
-if ! out=$(npx graph create --node "$GRAPH_NODE_ADMIN_URL" "$NAME" 2>&1); then
-  echo "$out" | grep -qi "already exists" || { echo "$out"; exit 1; }
-fi
-npx graph deploy --node "$GRAPH_NODE_ADMIN_URL" --ipfs "$IPFS_URL" "$NAME" --version-label "$VERSION"
-echo "Deployed $NAME ($VERSION). Queries: http://duckprotocol-arc-graph-node:8000/subgraphs/name/$NAME"
-'''
-
-
 def readme():
     rows = ''.join(f'| {name} | `{addr}` |\n' for name, addr in ADDRESSES.items())
     return f'''# DuckProtocol subgraph — Arc
 
-Subgraph for the DuckProtocol Arc build (`../`) on Arc mainnet (5042), deployed to the self-hosted
-graph-node described in `render.yaml` as `{SUBGRAPH_NAME}`. Goldsky doesn't index Arc mainnet.
+Subgraph for the DuckProtocol Arc build (`../`) on Arc mainnet (5042), deployed to
+Goldsky as `{SUBGRAPH_NAME}`, alongside the Robinhood Chain and Ink subgraphs.
 
 It indexes the same entities, with the same handlers, as the Robinhood Chain and Ink subgraphs: the
-bonding curve, launcher and crowdfund, DuckGenesisHook and the PoolManager swaps in its pools, lending
+bonding curve, launcher, crowdfund and reliquify (token migrations), DuckGenesisHook and the PoolManager swaps in its pools, lending
 vaults and their factory/config, per-token governance, and each token's transfers and holder rewards.
 Every other admin event is stored as an `AdminEvent`.
 
@@ -149,7 +126,7 @@ Every other admin event is stored as an `AdminEvent`.
 {rows}| DuckGenesisHook | `{HOOK}` |
 | PoolManager (Uniswap v4) | `{POOL_MANAGER}` |
 
-All start at block {START_BLOCK}. `DuckToken` (the three token templates), `DuckVault`,
+All start at block {START_BLOCK}, except `DuckReliquify` (deployed later) at block {RELIQUIFY_START_BLOCK}. `DuckToken` (the three token templates), `DuckVault`,
 `DuckTokenGovernor` and `TimelockControllerUpgradeable` are templates created as they appear.
 
 ## USD pricing on Arc
@@ -163,18 +140,19 @@ other than USDC gets a price discovered from its deepest Uniswap v3 pool against
 
 ```
 npm install
-bash deploy.sh      # needs GRAPH_NODE_ADMIN_URL and IPFS_URL; see the header of deploy.sh
+npm run deploy     # new Goldsky version, tagged "current"
 ```
 
-`deploy.sh` runs codegen and build, registers `{SUBGRAPH_NAME}` on first use, and deploys a new
-version. It runs inside the Render workspace (see its header), since the graph-node is private. Services
-on the same Render network query it at
-`http://duckprotocol-arc-graph-node:8000/subgraphs/name/{SUBGRAPH_NAME}`. The earlier graph node for the
-previous Arc contracts (`duckfun-graph-*`, suspended) is separate and untouched.
+`deploy.sh` runs codegen and build, deploys a uniquely versioned `{SUBGRAPH_NAME}` to Goldsky and moves the
+`current` tag to it, so consumers using the `/current/` endpoint never need a URL change (the backend and
+keeper default to it). It needs the `goldsky` CLI logged in to the DuckProtocol project.
+
+`render.yaml` in this directory describes the self-hosted graph-node Arc used before Goldsky supported it.
+It is no longer used; delete it once those Render services are gone.
 
 ## Changing it
 
-Everything here except `render.yaml` and this generator is generated. Edit the shared generator
+Everything here except `render.yaml` (retired) and this generator is generated. Edit the shared generator
 (`DuckProtocol-HQ/subgraph/gen_subgraphs.py`) or `gen_subgraph_arc.py`, then run
 `python3 gen_subgraph_arc.py`.
 '''
@@ -207,7 +185,7 @@ def main():
         total_events += n_ev
         total_rich += n_rich
     open(f'{HERE}/subgraph.yaml', 'w').write(g.manifest(abis, CFG))
-    open(f'{HERE}/deploy.sh', 'w').write(DEPLOY.replace('__NAME__', SUBGRAPH_NAME))
+    open(f'{HERE}/deploy.sh', 'w').write(g.DEPLOY.replace('__SLUG__', SUBGRAPH_NAME))
     os.chmod(f'{HERE}/deploy.sh', 0o755)
     pkg = {"name": SUBGRAPH_NAME, "version": "1.0.0", "private": True,
            "scripts": {"codegen": "graph codegen", "build": "graph build", "deploy": "bash deploy.sh"},
