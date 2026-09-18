@@ -13,6 +13,7 @@ remappings = [
   "duck-bonding-curve/=../bonding-curve/",
   "duck-launcher/=../launcher/",
   "duck-crowdfund/=../crowdfund/",
+  "duck-reliquify/=../reliquify/",
   "duck-shared/=../shared/",
   "duck-lending/=../lending/",
   "duck-governance/=../governance/",
