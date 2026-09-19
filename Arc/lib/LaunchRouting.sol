@@ -67,6 +67,19 @@ interface IV4PoolManagerLiquidity {
     function sync(address currency) external;
 }
 
+// Universal Router's V4_SWAP decodes SWAP_EXACT_IN_SINGLE's params as one ABI-encoded STRUCT. It carries a `bytes`, so
+// it is dynamic: abi.encode(struct) leads with an offset word that a flat abi.encode(a, b, c, ...) of the same fields
+// does not have, and the router would read the pool's first currency as that offset. Arc's router is the same build
+// as Robinhood Chain's, so the struct has its extra minHopPriceX36 field before hookData.
+struct ExactInSingleArc {
+    PoolKey poolKey;
+    bool    zeroForOne;
+    uint128 amountIn;
+    uint128 amountOutMinimum;
+    uint256 minHopPriceX36;
+    bytes   hookData;
+}
+
 // A USDC <-> quote-asset pool on Arc's Uniswap v4. Its currencies are USDC and the quote asset the route is
 // registered under, so only the rest of the pool key is stored.
 struct Route {
@@ -172,7 +185,7 @@ library StablechainsLaunchRouting {
         });
 
         bytes[] memory params = new bytes[](3);
-        params[0] = abi.encode(key, zeroForOne, uint128(amountIn_), uint128(minOut_), uint256(0), bytes(""));
+        params[0] = abi.encode(ExactInSingleArc(key, zeroForOne, uint128(amountIn_), uint128(minOut_), 0, ""));
         params[1] = abi.encode(currencyIn, amountIn_);
         params[2] = abi.encode(currencyOut, minOut_);
         bytes[] memory inputs = new bytes[](1);

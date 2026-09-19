@@ -29,6 +29,11 @@ interface IERC20BalanceRouting {
     function balanceOf(address account) external view returns (uint256);
 }
 
+interface IWETHRouting {
+    function deposit() external payable;
+    function withdraw(uint256 amount) external;
+}
+
 struct PoolKey {
     address currency0;
     address currency1;
@@ -41,6 +46,26 @@ struct SwapParams {
     bool    zeroForOne;
     int256  amountSpecified;
     uint160 sqrtPriceLimitX96;
+}
+
+// Universal Router's V4_SWAP decodes SWAP_EXACT_IN_SINGLE's params as one ABI-encoded STRUCT, and this one carries a
+// `bytes`, so it is dynamic: abi.encode(struct) leads with an offset word that a flat abi.encode(a, b, c, ...) of
+// the same fields does not have. Encode these structs, never the loose fields. Robinhood's fork has the extra
+// minHopPriceX36 field before hookData; Ink's doesn't (see LaunchRoutingExec.ROBINHOOD_CHAIN_ID).
+struct ExactInSingle {
+    PoolKey poolKey;
+    bool    zeroForOne;
+    uint128 amountIn;
+    uint128 amountOutMinimum;
+    bytes   hookData;
+}
+struct ExactInSingleRobinhood {
+    PoolKey poolKey;
+    bool    zeroForOne;
+    uint128 amountIn;
+    uint128 amountOutMinimum;
+    uint256 minHopPriceX36;
+    bytes   hookData;
 }
 
 struct ModifyLiquidityParams {
@@ -62,16 +87,21 @@ interface IV4PoolManagerLiquidity {
     function sync(address currency) external;
 }
 
-enum RouteShape { V3_STYLE, V4_STYLE }
+// V4_STYLE swaps against a pool whose other currency is NATIVE ETH (address(0)). V4_WETH_STYLE is the same swap
+// against a pool paired with WRAPPED native (WETH) instead -- which is what every DuckGenesisHook pool is, since the
+// hook never uses address(0) -- wrapping/unwrapping around it so callers still deal only in native ETH.
+// Appended last so the existing values keep their numbers.
+enum RouteShape { V3_STYLE, V4_STYLE, V4_WETH_STYLE }
 
 struct Route {
     RouteShape shape;
     bool       enabled;
     address[]  path;        // V3_STYLE only: WETH-anchored token path (forward order, native->quote), 2+ addresses
+                            // V4_WETH_STYLE only: exactly one address, the wrapped native token the pool is paired with
     uint24[]   fees;        // V3_STYLE only: per-hop fee tiers, path.length - 1 entries
-    address    hook;        // V4_STYLE only
-    uint24     fee;         // V4_STYLE only
-    int24      tickSpacing; // V4_STYLE only
+    address    hook;        // V4_STYLE and V4_WETH_STYLE only
+    uint24     fee;         // V4_STYLE and V4_WETH_STYLE only
+    int24      tickSpacing; // V4_STYLE and V4_WETH_STYLE only
 }
 
 interface ILaunchRoutingSelf {
@@ -87,6 +117,7 @@ library LaunchRoutingExec {
     error TransferFailed();
     error NativeTransferFailed();
     error RouterNotConfigured();
+    error InvalidRoute();
 
     event RouteSucceeded(address indexed quoteToken, uint256 indexed routeIndex, uint256 amountOut);
 
@@ -162,8 +193,11 @@ library LaunchRoutingExec {
 
         if (route_.shape == RouteShape.V3_STYLE) {
             _swapV3(universalRouter, route_.path, route_.fees, nativeIn_, amountIn_, minOut_, recipient_, quoteToken_);
-        } else {
+        } else if (route_.shape == RouteShape.V4_STYLE) {
             _swapV4(universalRouter, route_.hook, route_.fee, route_.tickSpacing, quoteToken_, nativeIn_, amountIn_, minOut_, recipient_);
+        } else {
+            if (route_.path.length != 1) revert InvalidRoute();
+            _swapV4Weth(universalRouter, route_.path[0], route_.hook, route_.fee, route_.tickSpacing, quoteToken_, nativeIn_, amountIn_, minOut_, recipient_);
         }
 
         amountOut = _balanceOf(outCurrency, recipient_) - balBefore;
@@ -215,20 +249,10 @@ library LaunchRoutingExec {
             hooks:       hook_
         });
 
-        bytes memory actions = abi.encodePacked(
-            uint8(ACTION_SWAP_EXACT_IN_SINGLE), uint8(ACTION_SETTLE_ALL), uint8(ACTION_TAKE_ALL)
-        );
-        bytes[] memory params = new bytes[](3);
-        params[0] = block.chainid == ROBINHOOD_CHAIN_ID
-            ? abi.encode(key, zeroForOne, uint128(amountIn_), uint128(minOut_), uint256(0), bytes(""))
-            : abi.encode(key, zeroForOne, uint128(amountIn_), uint128(minOut_), bytes(""));
-        params[1] = abi.encode(currencyIn, amountIn_);
-        params[2] = abi.encode(currencyOut, minOut_);
-
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = _v4SwapInput(key, zeroForOne, currencyIn, currencyOut, amountIn_, minOut_);
         bytes memory commands = new bytes(1);
         commands[0] = bytes1(uint8(CMD_V4_SWAP));
-        bytes[] memory inputs = new bytes[](1);
-        inputs[0] = abi.encode(actions, params);
 
         if (!nativeIn_) _ensurePermit2Approved(quoteToken_, universalRouter);
 
@@ -250,6 +274,76 @@ library LaunchRoutingExec {
                 }
             }
         }
+    }
+
+    // The same single-pool v4 swap as _swapV4, against a pool paired with WETH rather than native ETH. The caller still
+    // sees native ETH on the native side: a buy wraps the ETH first, a sell unwraps what the swap pays out. Every
+    // token amount the router touches is a real ERC20 (WETH included), so both sides settle through Permit2.
+    function _swapV4Weth(
+        address universalRouter, address weth_, address hook_, uint24 fee_, int24 tickSpacing_, address quoteToken_,
+        bool nativeIn_, uint256 amountIn_, uint256 minOut_, address recipient_
+    ) private {
+        address currencyIn  = nativeIn_ ? weth_ : quoteToken_;
+        address currencyOut = nativeIn_ ? quoteToken_ : weth_;
+
+        if (nativeIn_) IWETHRouting(weth_).deposit{value: amountIn_}();
+        _swapV4Exact(universalRouter, hook_, fee_, tickSpacing_, currencyIn, currencyOut, amountIn_, minOut_);
+
+        // TAKE_ALL paid this contract (the caller of execute()); pass the proceeds on in the form the caller wants.
+        if (nativeIn_) {
+            if (recipient_ != address(this)) {
+                uint256 received = _balanceOf(currencyOut, address(this));
+                if (received > 0) _safeTransfer(currencyOut, recipient_, received);
+            }
+        } else {
+            uint256 wethBalance = _balanceOf(weth_, address(this));
+            if (wethBalance > 0) IWETHRouting(weth_).withdraw(wethBalance);
+            if (recipient_ != address(this)) {
+                uint256 nativeBalance = address(this).balance;
+                if (nativeBalance > 0) _safeSendNative(recipient_, nativeBalance);
+            }
+        }
+    }
+
+    // One exact-input single-pool swap through Universal Router between two ERC20 currencies, paid out to this
+    // contract (TAKE_ALL always pays the caller of execute()). Same encoding as _swapV4, including Robinhood's extra
+    // field, for pools where neither side is native.
+    function _swapV4Exact(
+        address universalRouter, address hook_, uint24 fee_, int24 tickSpacing_,
+        address currencyIn, address currencyOut, uint256 amountIn_, uint256 minOut_
+    ) private {
+        bool zeroForOne = currencyIn < currencyOut;
+        PoolKey memory key = PoolKey({
+            currency0:   zeroForOne ? currencyIn  : currencyOut,
+            currency1:   zeroForOne ? currencyOut : currencyIn,
+            fee:         fee_,
+            tickSpacing: tickSpacing_,
+            hooks:       hook_
+        });
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = _v4SwapInput(key, zeroForOne, currencyIn, currencyOut, amountIn_, minOut_);
+        bytes memory commands = new bytes(1);
+        commands[0] = bytes1(uint8(CMD_V4_SWAP));
+
+        _ensurePermit2Approved(currencyIn, universalRouter);
+        IUniversalRouter(universalRouter).execute(commands, inputs, block.timestamp);
+    }
+
+    // The single V4_SWAP input: SWAP_EXACT_IN_SINGLE, then SETTLE_ALL (pay currencyIn) and TAKE_ALL (receive
+    // currencyOut, always to the caller of execute()).
+    function _v4SwapInput(
+        PoolKey memory key, bool zeroForOne, address currencyIn, address currencyOut, uint256 amountIn_, uint256 minOut_
+    ) private view returns (bytes memory) {
+        bytes memory actions = abi.encodePacked(
+            uint8(ACTION_SWAP_EXACT_IN_SINGLE), uint8(ACTION_SETTLE_ALL), uint8(ACTION_TAKE_ALL)
+        );
+        bytes[] memory params = new bytes[](3);
+        params[0] = block.chainid == ROBINHOOD_CHAIN_ID
+            ? abi.encode(ExactInSingleRobinhood(key, zeroForOne, uint128(amountIn_), uint128(minOut_), 0, ""))
+            : abi.encode(ExactInSingle(key, zeroForOne, uint128(amountIn_), uint128(minOut_), ""));
+        params[1] = abi.encode(currencyIn, amountIn_);
+        params[2] = abi.encode(currencyOut, minOut_);
+        return abi.encode(actions, params);
     }
 
     function _ensurePermit2Approved(address token_, address universalRouter) private {
