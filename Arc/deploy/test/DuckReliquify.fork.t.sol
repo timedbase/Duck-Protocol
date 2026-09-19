@@ -12,6 +12,13 @@ interface IHookAdminArcFork {
     function addLauncher(address launcher_) external;
 }
 
+interface IVaultFactoryArcFork {
+    function owner() external view returns (address);
+    function setFamily(address family_, bool allowed_) external;
+}
+interface ITokenVaultArcFork { function vault() external view returns (address); }
+interface IVaultCreatorArcFork { function creator() external view returns (address); }
+
 // Standalone mock, not Arc's real USDC-at-0x3600 construct: that address mirrors native balances
 // through Arc's own execution logic (see test/utils/MockArcUsdc.sol's own comment), which has no
 // totalSupply() at all -- approveMigration reads oldToken.totalSupply() directly, so the "old token"
@@ -279,5 +286,28 @@ contract DuckReliquifyArcForkTest is Test {
         vm.prank(holder1);
         vm.expectRevert();
         reliquify.rescueERC20(address(oldToken), holder1, 1e18);
+    }
+
+    // The migration's leader is the vault's creator (and, once seeded, the pool's creator), so they receive the
+    // creator share of fees; earlier builds gave the platform wallet that role.
+    function test_ApproveMigration_VaultCreatorIsTheLeader() public {
+        vm.prank(IVaultFactoryArcFork(VAULT_FACTORY).owner());
+        IVaultFactoryArcFork(VAULT_FACTORY).setFamily(address(reliquify), true);
+
+        vm.prank(leader);
+        uint256 id = reliquify.proposeMigration(address(oldToken), 200, 5_000, 5_000, 0);
+        address[] memory accounts = new address[](2);
+        accounts[0] = holder1; accounts[1] = holder2;
+        uint256[] memory balances = new uint256[](2);
+        balances[0] = 3_000e18; balances[1] = 3_000e18;
+        vm.startPrank(leader);
+        reliquify.submitSnapshotBatch(id, accounts, balances);
+        reliquify.finalizeSnapshot(id);
+        vm.stopPrank();
+
+        address newToken = reliquify.approveMigration(id, "Vault Test", "vTST", "ipfs://test");
+        address vault = ITokenVaultArcFork(newToken).vault();
+        assertTrue(vault != address(0), "a vault must exist when vaultBps > 0");
+        assertEq(IVaultCreatorArcFork(vault).creator(), leader, "the vault's creator must be the migration's leader");
     }
 }

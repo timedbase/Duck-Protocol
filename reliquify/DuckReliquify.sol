@@ -428,7 +428,8 @@ contract DuckReliquify is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
         IDuckReliquifyTokenLocal(token).renounceOwnership();
 
         if (vaultFactory != address(0) && m.vaultBps > 0) {
-            IDuckVaultFactoryLocal(vaultFactory).createVault(token, IERC20DecimalsLocal(token).decimals(), platformWallet);
+            // The vault follows the pool's creator (the hook keeps the two in sync on a creator transfer).
+            IDuckVaultFactoryLocal(vaultFactory).createVault(token, IERC20DecimalsLocal(token).decimals(), m.leader);
         }
 
         m.newToken = token;
@@ -526,11 +527,12 @@ contract DuckReliquify is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
         p.token1          = token1;
         p.amount0         = amount0;
         p.amount1         = amount1;
-        // Hardcoded to platformWallet, never the migration leader: registerPool's `creator` gets
-        // permanent hook-fee-claim rights and setFeeSplits control over the pool -- a leader who
-        // merely proposed a migration is a different, weaker trust class than someone who launched a
-        // token themselves, and shouldn't inherit that indefinite privilege.
-        p.creator         = platformWallet;
+        // The migration's leader is the pool's creator: registerPool's `creator` receives the
+        // creatorBps share of every fee payout (after the platform's 25% and the holders' 5%) and can
+        // route it with setFeeSplits. The role is permanent, which is why approveMigration is a manual
+        // platform review of who the leader is; if a leader's key is ever compromised or lost, the hook
+        // owner can still move the role with DuckGenesisHook.transferPoolCreator.
+        p.creator         = m.leader;
         p.hookFeeBps      = m.hookFeeBps;
         p.creatorBps      = m.creatorBps;
         p.vaultBps        = m.vaultBps;
