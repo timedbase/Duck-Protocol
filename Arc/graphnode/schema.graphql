@@ -311,6 +311,17 @@ type ReliquifyMigration @entity(immutable: false) {
   buybackQuoteSpent: BigInt!
   tokensBurned: BigInt!
   paused: Boolean!
+  # The platform ended the migration: no more deposits or allocation edits, claims stay open. The status stays
+  # Seeded. What was left in the reserve (unallocatedAtFinalize) can then be rescued by the platform.
+  finalized: Boolean!
+  finalizedAt: BigInt
+  unallocatedAtFinalize: BigInt
+  reserveRescued: BigInt!
+  # Allocation edits: the leader proposes one before the seed (which pauses the migration), the platform approves
+  # or rejects it, and after 24 hours it can be applied. currentEdit is the one still waiting, if any.
+  currentEdit: ReliquifyAllocationEdit
+  editsApplied: Int!
+  edits: [ReliquifyAllocationEdit!]! @derivedFrom(field: "migration")
   deposits: [ReliquifyDeposit!]! @derivedFrom(field: "migration")
   claims: [ReliquifyClaim!]! @derivedFrom(field: "migration")
   refunds: [ReliquifyRefund!]! @derivedFrom(field: "migration")
@@ -356,6 +367,46 @@ type ReliquifyBuyback @entity(immutable: true) {
   migration: ReliquifyMigration!
   quoteIn: BigInt!
   tokensBurned: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
+
+type ReliquifyAllocationEdit @entity(immutable: false) {
+  id: String! # migration entity id + "-" + the proposing event
+  migration: ReliquifyMigration!
+  dataHash: Bytes!
+  # Proposed -> Approved -> Applied, or Rejected / Cancelled / Expired.
+  status: String!
+  count: Int!
+  # Earliest time an approved edit can be applied; it must be applied within 7 days after this.
+  readyAt: BigInt!
+  # The proposed list: accounts (ascending) and the new cap for each.
+  accounts: [Bytes!]!
+  newCaps: [BigInt!]!
+  proposedAt: BigInt!
+  resolvedAt: BigInt
+  appliedBy: Bytes
+  proposedTx: Bytes!
+}
+
+# One row per wallet whose cap changed, from leader edits and owner adjustments after the seed.
+type ReliquifyAllocationChange @entity(immutable: true) {
+  id: Bytes!
+  migration: ReliquifyMigration!
+  account: Bytes!
+  oldCap: BigInt!
+  newCap: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
+
+type ReliquifyRescue @entity(immutable: true) {
+  id: Bytes!
+  migration: ReliquifyMigration!
+  to: Bytes!
+  amount: BigInt!
   blockNumber: BigInt!
   timestamp: BigInt!
   txHash: Bytes!

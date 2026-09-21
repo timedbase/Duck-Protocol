@@ -135,6 +135,34 @@
   },
   {
     "type": "function",
+    "name": "contributeWhitelisted",
+    "inputs": [
+      {
+        "name": "campaignId_",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount_",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "allocation_",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "proof_",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
     "name": "contributed",
     "inputs": [
       {
@@ -259,6 +287,35 @@
       }
     ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getCampaignAccess",
+    "inputs": [
+      {
+        "name": "campaignId_",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "mode",
+        "type": "uint8",
+        "internalType": "enum DuckCrowdfund.AccessMode"
+      },
+      {
+        "name": "maxPerWallet",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "whitelistRoot",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -413,6 +470,40 @@
   },
   {
     "type": "function",
+    "name": "isWhitelisted",
+    "inputs": [
+      {
+        "name": "campaignId_",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "allocation_",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "proof_",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "launch",
     "inputs": [
       {
@@ -474,6 +565,119 @@
         "name": "supplyTier_",
         "type": "uint8",
         "internalType": "uint8"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "campaignId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "launchWithAccess",
+    "inputs": [
+      {
+        "name": "p",
+        "type": "tuple",
+        "internalType": "struct DuckCrowdfund.LaunchParams",
+        "components": [
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "metaURI",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "dexQuoteAsset",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "goalNativeWei",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "startTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "vanitySalt",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "hookFeeBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "creatorBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "vaultBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "burnBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "supplyTier",
+            "type": "uint8",
+            "internalType": "uint8"
+          }
+        ]
+      },
+      {
+        "name": "a",
+        "type": "tuple",
+        "internalType": "struct DuckCrowdfund.AccessParams",
+        "components": [
+          {
+            "name": "mode",
+            "type": "uint8",
+            "internalType": "enum DuckCrowdfund.AccessMode"
+          },
+          {
+            "name": "maxPerWallet",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "whitelistRoot",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "whitelistURI",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
       }
     ],
     "outputs": [
@@ -678,6 +882,35 @@
         "name": "",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "remainingAllowance",
+    "inputs": [
+      {
+        "name": "campaignId_",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "allocation_",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -1045,6 +1278,43 @@
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "CampaignAccessSet",
+    "inputs": [
+      {
+        "name": "campaignId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "mode",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum DuckCrowdfund.AccessMode"
+      },
+      {
+        "name": "maxPerWallet",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "whitelistRoot",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "whitelistURI",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -1558,6 +1828,22 @@
   },
   {
     "type": "error",
+    "name": "ExceedsWalletCap",
+    "inputs": [
+      {
+        "name": "cap",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "alreadyContributed",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "FailedCall",
     "inputs": []
   },
@@ -1578,6 +1864,11 @@
   },
   {
     "type": "error",
+    "name": "InvalidAccessConfig",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidBps",
     "inputs": []
   },
@@ -1589,6 +1880,11 @@
   {
     "type": "error",
     "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidProof",
     "inputs": []
   },
   {
@@ -1641,6 +1937,11 @@
   {
     "type": "error",
     "name": "NotLiveYet",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotWhitelistCampaign",
     "inputs": []
   },
   {
@@ -1714,6 +2015,11 @@
   {
     "type": "error",
     "name": "VanityAddressRequired",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WhitelistRequired",
     "inputs": []
   },
   {
