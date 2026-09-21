@@ -72,7 +72,11 @@ contract UpgradeCrowdfundAccessForkTest is Test {
         live.launchWithAccess{value: fee}(wlP, DuckCrowdfund.AccessParams({mode: DuckCrowdfund.AccessMode.Whitelist, maxPerWallet: 0.25 ether, whitelistRoot: wlRoot, whitelistURI: "ipfs://list"}));
         bytes32[] memory pa = new bytes32[](1); pa[0] = lb;
         bytes32[] memory pb = new bytes32[](1); pb[0] = la;
-        vm.prank(a); live.contributeWhitelisted{value: 0.5 ether}(wlId, 0, 0.5 ether, pa);
+        // a's allocation (0.5) is above the 0.25 ceiling, so the ceiling is a's cap; b has no allocation, so it is b's too
+        vm.prank(a); live.contributeWhitelisted{value: 0.25 ether}(wlId, 0, 0.5 ether, pa);
+        vm.prank(a);
+        vm.expectRevert(abi.encodeWithSelector(DuckCrowdfund.ExceedsWalletCap.selector, 0.25 ether, 0.25 ether));
+        live.contributeWhitelisted{value: 1 wei}(wlId, 0, 0.5 ether, pa);
         vm.prank(b); live.contributeWhitelisted{value: 0.25 ether}(wlId, 0, 0, pb);
         vm.prank(b);
         vm.expectRevert(abi.encodeWithSelector(DuckCrowdfund.ExceedsWalletCap.selector, 0.25 ether, 0.25 ether));

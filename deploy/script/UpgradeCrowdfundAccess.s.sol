@@ -4,7 +4,7 @@ pragma solidity ^0.8.32;
 // duckfun.family (alt. duckpad.fun) — Crowdfund access modes.
 //
 // A crowdfund is now either Open (anyone, with an optional per-wallet maximum) or Whitelist (only wallets in the
-// creator's Merkle list, each with an optional allocation, and an optional shared maximum). The mode, the maximum and the
+// creator's Merkle list, each with an optional allocation, and an optional shared maximum that is a hard ceiling for every wallet). The mode, the maximum and the
 // list root are fixed at launch (launchWithAccess) and can't change afterwards.
 //
 // Backward compatible: the original launch() and contribute() are unchanged in behaviour (Open, no maximum), and a

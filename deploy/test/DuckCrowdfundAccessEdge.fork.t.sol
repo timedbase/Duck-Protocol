@@ -298,25 +298,48 @@ contract DuckCrowdfundAccessEdgeForkTest is DuckCrowdfundAccessForkTest {
         assertEq(crowdfund.remainingAllowance(id, w1, 0), 0);
     }
 
-    function test_AllocationAboveTheCampaignMaxWins_AndALowerAllocationCannotBeEscapedWithAnotherLeaf() public {
+    function test_SharedMaxIsACeiling_EvenWithSeveralLeavesForOneWallet() public {
         uint256 id = crowdfund.campaignCount();
-        // w1 has two leaves: 5 ETH and 1 ETH. The campaign's own max is 2 ETH.
-        bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _leaf(id, w1, 5 ether); leaves[1] = _leaf(id, w1, 1 ether);
+        // w1 has three leaves: 5 ETH, 1 ETH and 0 (no allocation). The campaign ceiling is 2 ETH.
+        bytes32[] memory leaves = new bytes32[](3);
+        leaves[0] = _leaf(id, w1, 5 ether); leaves[1] = _leaf(id, w1, 1 ether); leaves[2] = _leaf(id, w1, 0);
         (bytes32 r, bytes32[][] memory pr) = _buildTree(leaves);
         _launchAccess(_wl(r, 2 ether), 100 ether, address(0), 0);
         vm.deal(w1, 100 ether);
         vm.startPrank(w1);
-        crowdfund.contributeWhitelisted{value: 4 ether}(id, 0, 5 ether, pr[0]); // allocation above the campaign max is honoured
-        // using the smaller leaf afterwards: the wallet has already put in more than that allocation
-        vm.expectRevert(abi.encodeWithSelector(DuckCrowdfund.ExceedsWalletCap.selector, 1 ether, 4 ether));
-        crowdfund.contributeWhitelisted{value: 1 wei}(id, 0, 1 ether, pr[1]);
-        // it can still top up to the bigger allocation, but never past it: two leaves do not add up
-        crowdfund.contributeWhitelisted{value: 1 ether}(id, 0, 5 ether, pr[0]);
-        vm.expectRevert(abi.encodeWithSelector(DuckCrowdfund.ExceedsWalletCap.selector, 5 ether, 5 ether));
+        // the 5 ETH allocation is cut down to the 2 ETH ceiling
+        crowdfund.contributeWhitelisted{value: 2 ether}(id, 0, 5 ether, pr[0]);
+        vm.expectRevert(abi.encodeWithSelector(DuckCrowdfund.ExceedsWalletCap.selector, 2 ether, 2 ether));
         crowdfund.contributeWhitelisted{value: 1 wei}(id, 0, 5 ether, pr[0]);
+        // the smaller leaf cannot be used to get around it, and the no-allocation leaf is capped at the ceiling too
+        vm.expectRevert(abi.encodeWithSelector(DuckCrowdfund.ExceedsWalletCap.selector, 1 ether, 2 ether));
+        crowdfund.contributeWhitelisted{value: 1 wei}(id, 0, 1 ether, pr[1]);
+        vm.expectRevert(abi.encodeWithSelector(DuckCrowdfund.ExceedsWalletCap.selector, 2 ether, 2 ether));
+        crowdfund.contributeWhitelisted{value: 1 wei}(id, 0, 0, pr[2]);
         vm.stopPrank();
-        assertEq(crowdfund.contributed(id, w1), 5 ether);
+        assertEq(crowdfund.contributed(id, w1), 2 ether);
+    }
+
+    function test_AllocationBelowTheCeilingIsTheCap_AndABlankCeilingLeavesAllocationsAlone() public {
+        // ceiling 4 ETH, allocation 1 ETH -> cap 1 ETH
+        uint256 id = crowdfund.campaignCount();
+        bytes32[] memory leaves = new bytes32[](1); leaves[0] = _leaf(id, w1, 1 ether);
+        (bytes32 r,) = _buildTree(leaves);
+        _launchAccess(_wl(r, 4 ether), 100 ether, address(0), 0);
+        vm.deal(w1, 10 ether);
+        vm.startPrank(w1);
+        vm.expectRevert(abi.encodeWithSelector(DuckCrowdfund.ExceedsWalletCap.selector, 1 ether, 0));
+        crowdfund.contributeWhitelisted{value: 1 ether + 1}(id, 0, 1 ether, new bytes32[](0));
+        crowdfund.contributeWhitelisted{value: 1 ether}(id, 0, 1 ether, new bytes32[](0));
+        vm.stopPrank();
+        // blank ceiling, allocation 6 ETH -> cap 6 ETH
+        uint256 id2 = crowdfund.campaignCount();
+        bytes32[] memory l2 = new bytes32[](1); l2[0] = _leaf(id2, w2, 6 ether);
+        (bytes32 r2,) = _buildTree(l2);
+        _launchAccess(_wl(r2, 0), 100 ether, address(0), 0);
+        vm.deal(w2, 10 ether);
+        vm.prank(w2); crowdfund.contributeWhitelisted{value: 6 ether}(id2, 0, 6 ether, new bytes32[](0));
+        assertEq(crowdfund.contributed(id2, w2), 6 ether);
     }
 
     function test_DuplicateLeavesInTheListAreHarmless() public {
@@ -437,8 +460,8 @@ contract DuckCrowdfundAccessEdgeForkTest is DuckCrowdfundAccessForkTest {
         bytes32[] memory leaves = new bytes32[](2); leaves[0] = _leaf(id, w1, alloc); leaves[1] = _leaf(id, w2, 7 ether);
         (bytes32 r, bytes32[][] memory pr) = _buildTree(leaves);
         _launchAccess(_wl(r, maxCap), 1_000 ether, address(0), 0);
-        // independent statement of the rule: the wallet's own allocation if it has one, else the campaign max, else unlimited
-        uint256 cap = alloc != 0 ? alloc : maxCap;
+        // independent statement of the rule: the campaign max is a hard ceiling; an allocation can only lower it; zero means unset
+        uint256 cap = alloc == 0 ? maxCap : (maxCap == 0 ? alloc : (alloc < maxCap ? alloc : maxCap));
         vm.deal(w1, amt);
         vm.prank(w1);
         if (cap != 0 && amt > cap) {

@@ -4,7 +4,7 @@ pragma solidity ^0.8.32;
 // duckfun.family (alt. duckpad.fun) — Crowdfund access modes (Arc).
 //
 // Same change as the shared tree's script (see deploy/script/UpgradeCrowdfundAccess.s.sol): a crowdfund is Open (with an
-// optional per-wallet maximum) or Whitelist (a Merkle list, optional allocations, optional shared maximum), fixed at
+// optional per-wallet maximum) or Whitelist (a Merkle list, optional allocations, optional shared maximum that is a hard ceiling), fixed at
 // launch. On Arc the maximum is in whole ERC-20 USDC units (6 decimals), and a native-USDC contribution is converted
 // before it is checked, so both forms count toward the same maximum. Backward compatible; a UUPS implementation swap only.
 //

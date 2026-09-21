@@ -113,7 +113,8 @@ contract DuckCrowdfund is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
     // Merkle list (see contributeWhitelisted). Campaigns launched through the original launch() are Open with no cap.
     enum AccessMode { Open, Whitelist }
 
-    // maxPerWallet is in the campaign's quote-asset units (native wei, or the ERC-20's own units); 0 means no cap.
+    // maxPerWallet is in the campaign's quote-asset units (native wei, or the ERC-20's own units); 0 means no cap. In a
+    // whitelist campaign it is a hard ceiling that no wallet's allocation can exceed.
     struct AccessParams {
         AccessMode mode;
         uint256    maxPerWallet;
@@ -327,10 +328,10 @@ contract DuckCrowdfund is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
     }
 
     // What `account` can still put in: type(uint256).max when uncapped. `allocation_` is the wallet's own allocation
-    // from the whitelist (ignored for an open campaign).
+    // from the whitelist (ignored for an open campaign); the campaign's maxPerWallet still caps it.
     function remainingAllowance(uint256 campaignId_, address account, uint256 allocation_) external view returns (uint256) {
         AccessConfig storage a = _access[campaignId_];
-        uint256 cap = (a.mode == AccessMode.Whitelist && allocation_ != 0) ? allocation_ : a.maxPerWallet;
+        uint256 cap = a.mode == AccessMode.Whitelist ? _effectiveCap(allocation_, a.maxPerWallet) : a.maxPerWallet;
         if (cap == 0) return type(uint256).max;
         uint256 used = contributed[campaignId_][account];
         return used >= cap ? 0 : cap - used;
@@ -478,9 +479,10 @@ contract DuckCrowdfund is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
         _contribute(campaignId_, amount_, a.maxPerWallet);
     }
 
-    // Whitelist campaigns: `proof` shows that (campaignId, msg.sender, allocation) is in the creator's list. A wallet's
-    // own allocation is its cap if the list gave it one (non-zero); otherwise the campaign's maxPerWallet applies
-    // (zero there means no cap). A wrong proof, a wrong allocation or someone else's proof reverts before any money moves.
+    // Whitelist campaigns: `proof` shows that (campaignId, msg.sender, allocation) is in the creator's list. The
+    // campaign's maxPerWallet is a hard ceiling for every wallet; a wallet's own allocation can only lower its cap
+    // below that (see _effectiveCap). A wrong proof, a wrong allocation or someone else's proof reverts before any
+    // money moves.
     function contributeWhitelisted(uint256 campaignId_, uint256 amount_, uint256 allocation_, bytes32[] calldata proof_)
         external payable nonReentrant
     {
@@ -488,7 +490,16 @@ contract DuckCrowdfund is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
         AccessConfig storage a = _access[campaignId_];
         if (a.mode != AccessMode.Whitelist) revert NotWhitelistCampaign();
         if (!MerkleProof.verifyCalldata(proof_, a.whitelistRoot, _leaf(campaignId_, msg.sender, allocation_))) revert InvalidProof();
-        _contribute(campaignId_, amount_, allocation_ != 0 ? allocation_ : a.maxPerWallet);
+        _contribute(campaignId_, amount_, _effectiveCap(allocation_, a.maxPerWallet));
+    }
+
+    // A whitelisted wallet's cap. The campaign-wide maximum is a hard ceiling: an allocation may lower a wallet's cap below
+    // it but never raise it above. Zero means "not set": no allocation leaves the ceiling as the cap, no ceiling leaves
+    // the allocation as the cap, and neither means the wallet is uncapped.
+    function _effectiveCap(uint256 allocation, uint256 maxPerWallet_) private pure returns (uint256) {
+        if (allocation == 0) return maxPerWallet_;
+        if (maxPerWallet_ == 0) return allocation;
+        return allocation < maxPerWallet_ ? allocation : maxPerWallet_;
     }
 
     // The Merkle leaf is hashed twice, so an inner node can never be passed off as a leaf (second-preimage attack),

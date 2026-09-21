@@ -116,6 +116,22 @@ contract DuckCrowdfundAccessForkTest is ArcProtocolForkTest {
         assertFalse(crowdfund.isWhitelisted(id, stranger, A3, _proof(2)));
     }
 
+    // The campaign-wide maximum is a hard ceiling: an allocation can lower a wallet's cap below it but never raise it above.
+    function test_Whitelist_SharedMaxIsAHardCeiling() public {
+        uint256 id = crowdfund.campaignCount();
+        _tree(id);
+        _launch(DuckCrowdfund.AccessParams({mode: DuckCrowdfund.AccessMode.Whitelist, maxPerWallet: 30e6, whitelistRoot: root, whitelistURI: "ipfs://list"}), 1_000e6);
+        vm.deal(w3, 200e18); vm.deal(w1, 200e18);
+        // w3's allocation is 50 USDC, the ceiling is 30
+        vm.prank(w3); crowdfund.contributeWhitelisted{value: 30e18}(id, 0, A3, _proof(2));
+        vm.prank(w3);
+        vm.expectRevert(abi.encodeWithSelector(DuckCrowdfund.ExceedsWalletCap.selector, 30e6, 30e6));
+        crowdfund.contributeWhitelisted{value: 1e18}(id, 0, A3, _proof(2));
+        // w1's allocation (20) is under the ceiling, so it is the cap
+        assertEq(crowdfund.remainingAllowance(id, w1, A1), 20e6);
+        assertEq(crowdfund.remainingAllowance(id, w2, A2), 30e6);
+    }
+
     function test_Whitelist_RaiseSucceedsAndClaims() public {
         uint256 id = crowdfund.campaignCount();
         _tree(id);

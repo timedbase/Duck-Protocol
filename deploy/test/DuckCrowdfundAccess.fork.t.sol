@@ -128,6 +128,22 @@ contract DuckCrowdfundAccessForkTest is DuckProtocolCrowdfundForkTest {
         assertEq(crowdfund.remainingAllowance(id, w1, A1), 0);
     }
 
+    // The campaign-wide maximum is a hard ceiling: an allocation can lower a wallet's cap but never raise it above.
+    function test_Whitelist_SharedMaxIsAHardCeiling() public {
+        uint256 id = _launchWhitelist(3 ether, 10 ether);
+        // w3's allocation is 5 ETH, but the ceiling is 3 ETH
+        vm.startPrank(w3);
+        crowdfund.contributeWhitelisted{value: 3 ether}(id, 0, A3, _proof(2));
+        vm.expectRevert(abi.encodeWithSelector(DuckCrowdfund.ExceedsWalletCap.selector, 3 ether, 3 ether));
+        crowdfund.contributeWhitelisted{value: 1 wei}(id, 0, A3, _proof(2));
+        vm.stopPrank();
+        assertEq(crowdfund.remainingAllowance(id, w3, A3), 0);
+        // w1's allocation (2 ETH) is below the ceiling, so the allocation is the cap
+        assertEq(crowdfund.remainingAllowance(id, w1, A1), 2 ether);
+        // w2 has no allocation, so the ceiling itself is the cap
+        assertEq(crowdfund.remainingAllowance(id, w2, A2), 3 ether);
+    }
+
     function test_Whitelist_ZeroAllocationFallsBackToTheCampaignCap() public {
         uint256 id = _launchWhitelist(3 ether, 10 ether);
         vm.startPrank(w2);
@@ -208,7 +224,7 @@ contract DuckCrowdfundAccessForkTest is DuckProtocolCrowdfundForkTest {
     }
 
     function test_Whitelist_FullRaiseFinalizesAndWhitelistedContributorsClaim() public {
-        uint256 id = _launchWhitelist(3 ether, 10 ether);
+        uint256 id = _launchWhitelist(0, 10 ether); // no shared ceiling: the allocations (5 + 2, and w2 uncapped) decide
         vm.prank(w3); crowdfund.contributeWhitelisted{value: 5 ether}(id, 0, A3, _proof(2));
         vm.prank(w2); crowdfund.contributeWhitelisted{value: 3 ether}(id, 0, A2, _proof(1));
         vm.prank(w1); crowdfund.contributeWhitelisted{value: 2 ether}(id, 0, A1, _proof(0));
