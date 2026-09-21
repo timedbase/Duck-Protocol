@@ -97,6 +97,20 @@ contract DuckReliquify is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
     error SnapshotExceedsSupply();
     error RescueExceedsSurplus();
     error CannotRescueMigrationToken();
+    error EditPending();
+    error NoPendingEdit();
+    error InvalidEdit();
+    error EditTooLarge();
+    error EditNotApproved();
+    error EditAlreadyApproved();
+    error EditNotReady();
+    error EditExpired();
+    error EditNotExpired();
+    error EditDataMismatch();
+    error BelowDeposited(address account, uint256 deposited);
+    error ExceedsReserved(uint256 undepositedAfter, uint256 reserved);
+    error MigrationEnded();
+    error MigrationNotEnded();
 
     enum MigrationStatus { Proposed, Approved, Live, Seeded, Rejected, Cancelled, Aborted }
 
@@ -137,7 +151,7 @@ contract DuckReliquify is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
 
     Migration[] private migrations;
 
-    mapping(uint256 => mapping(address => uint256)) public eligibleBalance; // snapshot, pre-approval only
+    mapping(uint256 => mapping(address => uint256)) public eligibleBalance; // snapshot; after approval only via the allocation-edit functions
     mapping(uint256 => mapping(address => bool))    public excluded;        // one-way once set
     mapping(uint256 => mapping(address => uint256)) public deposited;       // capped at eligibleBalance
     mapping(uint256 => mapping(address => uint256)) public pendingClaim;    // pre-seed entitlement
@@ -150,6 +164,14 @@ contract DuckReliquify is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
     address public v4Hook;
     address public platformWallet;
     uint256 public reliquifyFee;
+
+    // Appended for the allocation-edit upgrade: the Migration array can't grow a field without shifting its elements, so
+    // a migration's pending edit lives in its own mapping. Unset (dataHash zero) means no edit is pending.
+    mapping(uint256 => PendingEdit) public pendingEdit;
+
+    // Set by finalizeMigration: the migration is over. No more old tokens are taken and no allocation changes; wallets that
+    // already deposited before the seed can still claim; what is left in `reserved` can be rescued by the owner.
+    mapping(uint256 => bool) public finalized;
 
     event MigrationProposed(uint256 indexed id, address indexed leader, address indexed oldToken);
     event SnapshotBatchSubmitted(uint256 indexed id, uint256 count, uint256 eligibleSupply);
@@ -171,6 +193,16 @@ contract DuckReliquify is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
     event ReliquifyFeeSet(uint256 fee);
     event ETHRescued(address indexed to, uint256 amount);
     event ERC20Rescued(address indexed token, address indexed to, uint256 amount);
+    event AllocationEditProposed(uint256 indexed id, bytes32 dataHash, uint256 count, uint64 readyAt);
+    event AllocationEditData(uint256 indexed id, bytes32 indexed dataHash, address[] accounts, uint256[] newCaps);
+    event AllocationEditApproved(uint256 indexed id, bytes32 dataHash);
+    event AllocationEditRejected(uint256 indexed id, bytes32 dataHash);
+    event AllocationEditCancelled(uint256 indexed id, bytes32 dataHash);
+    event AllocationEditExpired(uint256 indexed id, bytes32 dataHash);
+    event AllocationEditApplied(uint256 indexed id, bytes32 dataHash, uint256 newEligibleSupply, address indexed by);
+    event AllocationAdjusted(uint256 indexed id, address indexed account, uint256 oldCap, uint256 newCap);
+    event MigrationFinalized(uint256 indexed id, uint256 unallocatedReserve, address indexed by);
+    event ReserveRescued(uint256 indexed id, address indexed to, uint256 amount);
 
     constructor() {
         requireArcChain();
@@ -292,7 +324,203 @@ contract DuckReliquify is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
     function setPaused(uint256 id, bool paused_) external onlyOwner {
         if (id >= migrations.length) revert MigrationNotFound();
         paused[id] = paused_;
+        // The owner has taken over the pause: resolving a pending edit must not undo it.
+        if (pendingEdit[id].dataHash != bytes32(0)) pendingEdit[id].pausedByEdit = false;
         emit PausedSet(id, paused_);
+    }
+
+    // ---------- allocation edits ----------
+    //
+    // An approved migration's allocations (each wallet's eligibleBalance) used to be frozen for good. They can now be
+    // corrected, under one rule that keeps every promise the contract has made:
+    //
+    //   sum of everyone's still-undeposited allocation  <=  reserved
+    //
+    // `reserved` is the new tokens this contract still holds for wallets that have not deposited, and the left side is
+    // eligibleSupply - totalDeposited, so an edit that raises one wallet has to lower others to fit, and nothing can be
+    // promised that is not there. Whatever a wallet has already deposited (and so any pendingClaim it has not yet
+    // collected) is never touched: a new allocation cannot be below what the wallet has deposited.
+    //
+    // BEFORE the pool is seeded the leader may propose an edit, but the platform reviews it:
+    //   propose  -> the migration is paused and the edit is pending (a hash of it is stored; the full list is in the event)
+    //   approve / reject -> the owner decides; a rejection (or the leader cancelling) resumes the migration
+    //   apply    -> once the owner has approved AND EDIT_DELAY has passed, the leader applies the same list and it resumes
+    // AFTER the seed only the owner can edit (adminAdjustAllocations), immediately, under the same rule, until the owner
+    // finalizes the migration (finalizeMigration), which ends it; what is then left in the reserve can be rescued.
+
+    uint256 public constant EDIT_DELAY     = 24 hours; // between proposing an edit and being allowed to apply it
+    uint256 public constant EDIT_WINDOW    = 7 days;   // how long after it becomes ready an approved edit can still be applied
+    uint256 public constant MAX_EDIT_BATCH = 400;      // wallets per edit (larger changes are several edits)
+
+    struct PendingEdit {
+        bytes32 dataHash;     // keccak256(abi.encode(accounts, newCaps)); zero means no edit is pending
+        uint64  proposedAt;
+        uint64  readyAt;      // proposedAt + EDIT_DELAY
+        uint32  count;
+        bool    approved;     // the owner approved it
+        bool    pausedByEdit; // proposing it paused the migration (it was not already paused); resolving it resumes it
+    }
+
+    function proposeAllocationEdit(uint256 id, address[] calldata accounts, uint256[] calldata newCaps) external nonReentrant {
+        if (id >= migrations.length) revert MigrationNotFound();
+        Migration storage m = migrations[id];
+        if (msg.sender != m.leader) revert NotLeader();
+        if (m.status != MigrationStatus.Live) revert WrongStatus(); // before the seed only
+        PendingEdit storage p = pendingEdit[id];
+        if (p.dataHash != bytes32(0)) revert EditPending();
+        if (accounts.length == 0 || accounts.length != newCaps.length) revert InvalidEdit();
+        if (accounts.length > MAX_EDIT_BATCH) revert EditTooLarge();
+
+        // Rejected now if it would already break the rule, rather than after a day of waiting. Applying re-checks it.
+        _editAllocations(id, m, accounts, newCaps, false);
+
+        bool wasPaused = paused[id];
+        if (!wasPaused) {
+            paused[id] = true;
+            emit PausedSet(id, true);
+        }
+        bytes32 h = keccak256(abi.encode(accounts, newCaps));
+        uint64 readyAt = uint64(block.timestamp + EDIT_DELAY);
+        pendingEdit[id] = PendingEdit({
+            dataHash: h, proposedAt: uint64(block.timestamp), readyAt: readyAt, count: uint32(accounts.length),
+            approved: false, pausedByEdit: !wasPaused
+        });
+        emit AllocationEditProposed(id, h, accounts.length, readyAt);
+        emit AllocationEditData(id, h, accounts, newCaps);
+    }
+
+    function approveAllocationEdit(uint256 id) external onlyOwner {
+        PendingEdit storage p = _requirePending(id);
+        if (p.approved) revert EditAlreadyApproved();
+        if (block.timestamp >= uint256(p.readyAt) + EDIT_WINDOW) revert EditExpired();
+        p.approved = true;
+        emit AllocationEditApproved(id, p.dataHash);
+    }
+
+    function rejectAllocationEdit(uint256 id) external onlyOwner {
+        PendingEdit storage p = _requirePending(id);
+        emit AllocationEditRejected(id, p.dataHash);
+        _closeEdit(id, p);
+    }
+
+    // The leader can withdraw their own pending edit.
+    function cancelAllocationEdit(uint256 id) external {
+        if (id >= migrations.length) revert MigrationNotFound();
+        if (msg.sender != migrations[id].leader) revert NotLeader();
+        PendingEdit storage p = _requirePending(id);
+        emit AllocationEditCancelled(id, p.dataHash);
+        _closeEdit(id, p);
+    }
+
+    // An edit that was never applied does not pause the migration for ever: past its window anyone can clear it.
+    function clearExpiredEdit(uint256 id) external {
+        PendingEdit storage p = _requirePending(id);
+        if (block.timestamp < uint256(p.readyAt) + EDIT_WINDOW) revert EditNotExpired();
+        emit AllocationEditExpired(id, p.dataHash);
+        _closeEdit(id, p);
+    }
+
+    // Apply an approved edit once its delay has passed. The list must be exactly the one that was proposed.
+    function applyAllocationEdit(uint256 id, address[] calldata accounts, uint256[] calldata newCaps) external nonReentrant {
+        if (id >= migrations.length) revert MigrationNotFound();
+        Migration storage m = migrations[id];
+        if (msg.sender != m.leader && msg.sender != owner()) revert NotLeader();
+        if (m.status != MigrationStatus.Live) revert WrongStatus(); // e.g. the owner unpaused and seeded in the meantime
+        PendingEdit storage p = _requirePending(id);
+        if (!p.approved) revert EditNotApproved();
+        if (block.timestamp < p.readyAt) revert EditNotReady();
+        if (block.timestamp >= uint256(p.readyAt) + EDIT_WINDOW) revert EditExpired();
+        if (keccak256(abi.encode(accounts, newCaps)) != p.dataHash) revert EditDataMismatch();
+
+        bytes32 h = p.dataHash;
+        uint256 newSupply = _editAllocations(id, m, accounts, newCaps, true);
+        emit AllocationEditApplied(id, h, newSupply, msg.sender);
+        _closeEdit(id, p);
+    }
+
+    // After the seed only the owner edits, immediately, under the same rule: it cannot exceed what is left in the contract.
+    function adminAdjustAllocations(uint256 id, address[] calldata accounts, uint256[] calldata newCaps) external onlyOwner nonReentrant {
+        if (id >= migrations.length) revert MigrationNotFound();
+        Migration storage m = migrations[id];
+        if (m.status != MigrationStatus.Seeded) revert WrongStatus();
+        if (finalized[id]) revert MigrationEnded();
+        if (accounts.length == 0 || accounts.length != newCaps.length) revert InvalidEdit();
+        if (accounts.length > MAX_EDIT_BATCH) revert EditTooLarge();
+        uint256 newSupply = _editAllocations(id, m, accounts, newCaps, true);
+        emit AllocationEditApplied(id, keccak256(abi.encode(accounts, newCaps)), newSupply, msg.sender);
+    }
+
+    // Ends a seeded migration. From here no more old tokens are taken and no allocation can change; a wallet that already
+    // deposited before the seed can still claim what it is owed. What is left in `reserved` was set aside for wallets that
+    // never deposited, and the owner can now rescue it (rescueReserve). Nothing is burned.
+    function finalizeMigration(uint256 id) external onlyOwner {
+        if (id >= migrations.length) revert MigrationNotFound();
+        Migration storage m = migrations[id];
+        if (m.status != MigrationStatus.Seeded) revert WrongStatus();
+        if (finalized[id]) revert MigrationEnded();
+        finalized[id] = true;
+        emit MigrationFinalized(id, m.reserved, msg.sender);
+    }
+
+    // Once a migration is finalized, moves reserved new tokens (never tokens owed to a wallet that deposited) to `to`.
+    function rescueReserve(uint256 id, address to, uint256 amount) external onlyOwner nonReentrant {
+        if (id >= migrations.length) revert MigrationNotFound();
+        if (to == address(0)) revert ZeroAddress();
+        Migration storage m = migrations[id];
+        if (!finalized[id]) revert MigrationNotEnded();
+        if (amount == 0) revert ZeroAmount();
+        if (amount > m.reserved) revert RescueExceedsSurplus();
+        m.reserved -= amount;
+        _safeTransfer(m.newToken, to, amount);
+        emit ReserveRescued(id, to, amount);
+    }
+
+    function _requirePending(uint256 id) private view returns (PendingEdit storage p) {
+        p = pendingEdit[id];
+        if (p.dataHash == bytes32(0)) revert NoPendingEdit();
+    }
+
+    // Clears a pending edit and resumes the migration if the edit is what paused it.
+    function _closeEdit(uint256 id, PendingEdit storage p) private {
+        if (p.pausedByEdit && paused[id]) {
+            paused[id] = false;
+            emit PausedSet(id, false);
+        }
+        delete pendingEdit[id];
+    }
+
+    // The one place allocations change. `accounts` must be strictly ascending (so no wallet appears twice and the list
+    // has one canonical form). With write == false it only checks. Returns the new eligibleSupply.
+    function _editAllocations(uint256 id, Migration storage m, address[] calldata accounts, uint256[] calldata newCaps, bool write)
+        private returns (uint256 supply)
+    {
+        supply = m.eligibleSupply;
+        address prev;
+        for (uint256 i; i < accounts.length; ++i) {
+            address a = accounts[i];
+            if (a <= prev) revert InvalidEdit();
+            prev = a;
+            if (excluded[id][a]) revert AlreadyExcluded();
+            uint256 old = eligibleBalance[id][a];
+            uint256 nc = newCaps[i];
+            uint256 dep = deposited[id][a];
+            if (nc < dep) revert BelowDeposited(a, dep);
+            supply = supply - old + nc;
+            if (write) {
+                eligibleBalance[id][a] = nc;
+                emit AllocationAdjusted(id, a, old, nc);
+            }
+        }
+        if (supply == 0) revert ZeroAmount();
+        // The rule: what is still to be deposited cannot exceed what is reserved for it.
+        if (supply > m.totalDeposited + m.reserved) revert ExceedsReserved(supply - m.totalDeposited, m.reserved);
+        if (write) {
+            m.eligibleSupply = supply;
+            // Lowering allocations can put the pre-seed deposits over half of the new total.
+            if (m.status == MigrationStatus.Live && !m.thresholdReached && m.totalDeposited > 0 && m.totalDeposited >= supply / 2) {
+                m.thresholdReached = true;
+            }
+        }
     }
 
     function migrationCount() external view returns (uint256) {
@@ -552,6 +780,7 @@ contract DuckReliquify is Initializable, UUPSUpgradeable, Ownable2StepUpgradeabl
         Migration storage m = migrations[id];
         if (paused[id]) revert Paused();
         if (m.status != MigrationStatus.Seeded) revert WrongStatus();
+        if (finalized[id]) revert MigrationEnded();
         if (excluded[id][msg.sender]) revert CapExceeded();
         if (amount == 0) revert ZeroAmount();
         if (deposited[id][msg.sender] + amount > eligibleBalance[id][msg.sender]) revert CapExceeded();
