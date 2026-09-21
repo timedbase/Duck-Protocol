@@ -93,6 +93,37 @@ contract UpgradeCrowdfundAccessForkTest is Test {
         assertEq(uint8(mode), uint8(DuckCrowdfund.AccessMode.Open)); assertEq(cap, 0);
     }
 
+    function test_NewCampaignsDoNotDisturbTheOldOne_AndUpgradingTwiceIsHarmless() public {
+        (address creator0,, uint256 goal0, uint256 start0, uint256 deadline0, uint256 raised0, bool fin0, bool suc0, address token0) = live.getCampaignCore(0);
+        uint256 contributed0 = live.contributed(0, creator0);
+        address impl = new UpgradeCrowdfundAccess().upgradeAs(OWNER);
+        // Re-pointing the proxy at the implementation it already has must change nothing. (Running the script itself a
+        // second time reverts at the CREATE2 deployment, since that implementation already exists: harmless, and
+        // nothing is sent.)
+        vm.prank(OWNER);
+        live.upgradeToAndCall(impl, "");
+
+        address maker = makeAddr("live-maker2"); vm.deal(maker, 10 ether);
+        uint256 fee = live.campaignFee();
+        for (uint256 i; i < 3; ++i) {
+            DuckCrowdfund.LaunchParams memory p = _params(maker, 5 ether);
+            vm.prank(maker);
+            live.launchWithAccess{value: fee}(p, DuckCrowdfund.AccessParams({mode: DuckCrowdfund.AccessMode.Open, maxPerWallet: 1 ether + i, whitelistRoot: bytes32(0), whitelistURI: ""}));
+        }
+        // campaign 0 is exactly as it was
+        (address c1,, uint256 g1, uint256 s1, uint256 d1, uint256 r1, bool f1, bool su1, address t1) = live.getCampaignCore(0);
+        assertEq(c1, creator0); assertEq(g1, goal0); assertEq(s1, start0); assertEq(d1, deadline0); assertEq(r1, raised0);
+        assertEq(f1, fin0); assertEq(su1, suc0); assertEq(t1, token0);
+        assertEq(live.contributed(0, creator0), contributed0);
+        (DuckCrowdfund.AccessMode m0, uint256 cap0, bytes32 root0) = live.getCampaignAccess(0);
+        assertEq(uint8(m0), 0); assertEq(cap0, 0); assertEq(root0, bytes32(0));
+        // and each new campaign has its own, distinct access config
+        for (uint256 i; i < 3; ++i) {
+            (, uint256 cap,) = live.getCampaignAccess(1 + i);
+            assertEq(cap, 1 ether + i);
+        }
+    }
+
     function test_OnlyTheOwnerCanUpgrade() public {
         address impl = address(new DuckCrowdfund());
         vm.prank(makeAddr("not-owner"));

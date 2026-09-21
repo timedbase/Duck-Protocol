@@ -65,7 +65,7 @@ contract DuckCrowdfundAccessForkTest is DuckProtocolCrowdfundForkTest {
         assertEq(got, id);
     }
 
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp();
         vm.deal(w1, 100 ether); vm.deal(w2, 100 ether); vm.deal(w3, 100 ether); vm.deal(w4, 100 ether); vm.deal(stranger, 100 ether);
     }
