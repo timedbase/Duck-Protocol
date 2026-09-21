@@ -6,6 +6,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 
 import {DuckCrowdfund} from "duck-crowdfund/DuckCrowdfund.sol";
 import {DuckToken} from "duck-lib/DuckToken.sol";
+import {DuckCrowdfundToken} from "duck-lib/DuckCrowdfundToken.sol";
 import {DuckHookV4} from "duck-shared/DuckHookV4.sol";
 import {DuckVault} from "duck-lending/DuckVault.sol";
 import {DuckVaultFactory} from "duck-lending/DuckVaultFactory.sol";
@@ -44,7 +45,9 @@ contract DuckProtocolCrowdfundForkTest is Test {
 
     DuckCrowdfund crowdfund;
     DuckHookV4 hook;
-    DuckToken tokenImpl;
+    // The production template: the crowdfund calls the open token's 8-argument initToken, which the legacy DuckToken
+    // (with its transfer lock) doesn't have.
+    DuckCrowdfundToken tokenImpl;
     DuckVaultFactory vaultFactory;
 
     address owner    = makeAddr("dpc-owner");
@@ -56,7 +59,7 @@ contract DuckProtocolCrowdfundForkTest is Test {
     uint256 private _tokenSaltNonceCursor;
     address private _cbExpected;
 
-    function setUp() public {
+    function setUp() public virtual {
         vm.createSelectFork(vm.envString("ROBINHOOD_RPC_URL"));
 
         vm.etch(owner, "");
@@ -89,7 +92,7 @@ contract DuckProtocolCrowdfundForkTest is Test {
         );
         vaultFactory = DuckVaultFactory(address(vaultFactoryProxy));
 
-        tokenImpl = new DuckToken(address(vaultFactory));
+        tokenImpl = new DuckCrowdfundToken(address(vaultFactory));
 
         DuckCrowdfund crowdfundImpl = new DuckCrowdfund();
         ERC1967Proxy crowdfundProxy = new ERC1967Proxy(
